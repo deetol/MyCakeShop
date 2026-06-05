@@ -56,35 +56,3 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-app/
-├── Http/
-│ ├── Controllers/
-│ │ ├── Auth/
-│ │ │ └── AuthenticatedSessionController.php ← Login + Logout
-│ │ └── DashboardController.php ← Protected dashboard
-│ ├── Middleware/
-│ │ └── RedirectIfAuthenticated.php ← Guest middleware
-│ └── Requests/
-│ └── Auth/
-│ └── LoginRequest.php ← Validation + rate limit
-├── Models/
-│ └── User.php ← Authenticatable model
-
-database/
-├── migrations/
-│ └── 2024_01_01_000001_create_users_table.php
-└── seeders/
-├── DatabaseSeeder.php
-└── UserSeeder.php
-
-resources/views/
-├── auth/
-│ └── login.blade.php ← Login form (Tailwind)
-├── dashboard/
-│ └── index.blade.php ← Protected dashboard
-└── layouts/
-└── app.blade.php ← Base layout
-
-routes/
-└── web.php ← All routes
