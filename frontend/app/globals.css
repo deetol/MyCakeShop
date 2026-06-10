@@ -98,3 +98,19 @@
   --text-body-md--line-height: 24px;
   --text-body-md--font-weight: 400;
 }
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(112, 62, 14, 0.1), 0 4px 6px -2px rgba(112, 62, 14, 0.05);
+    transform: translateY(-2px);
+  }
+}
