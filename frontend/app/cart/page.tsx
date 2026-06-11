@@ -238,15 +238,15 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  <button
-                    onClick={handleCheckout}
+                  <Link
+                    href="/checkout"
                     className="w-full bg-primary text-on-primary font-label-sm text-label-sm min-h-[48px] rounded-lg mt-8 hover:bg-primary-container hover:text-on-primary-container transition-all flex items-center justify-center gap-2 active:scale-[0.98] font-bold"
                   >
                     Lanjut ke Pembayaran
                     <span className="material-symbols-outlined text-[18px]">
                       arrow_forward
                     </span>
-                  </button>
+                  </Link>
 
                   <div className="mt-4 flex items-start gap-2 text-on-surface-variant bg-surface-container-low p-3 rounded-lg">
                     <span className="material-symbols-outlined text-[16px] text-tertiary mt-0.5">
