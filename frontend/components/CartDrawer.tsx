@@ -2,6 +2,7 @@
 
 import { useCart } from "@/context/CartContext";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 
 export default function CartDrawer() {
@@ -223,13 +224,23 @@ export default function CartDrawer() {
               </div>
               <button
                 onClick={handleCheckout}
-                className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-primary-container transition-colors active:scale-95 duration-150 shadow-md"
+                className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-primary-container transition-colors active:scale-95 duration-150 shadow-md font-bold"
               >
                 <span className="material-symbols-outlined text-[20px]">
                   shopping_cart_checkout
                 </span>
                 Checkout Sekarang
               </button>
+              <Link
+                href="/cart"
+                onClick={() => setCartOpen(false)}
+                className="w-full h-12 border border-primary text-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-surface-container transition-colors active:scale-95 duration-150 font-bold"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  shopping_cart
+                </span>
+                Lihat Keranjang Lengkap
+              </Link>
               <p className="text-center font-label-sm text-[11px] text-on-surface-variant">
                 Pajak dan biaya pengiriman akan dihitung saat checkout.
               </p>
