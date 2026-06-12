@@ -3,12 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const { cartCount, setCartOpen } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    setIsLoggedIn(!!storedUser);
+  }, [pathname]);
 
   const navLinks = [
     { name: "Beranda", href: "/" },
@@ -67,7 +73,7 @@ export default function Navbar() {
 
           {/* Profile Button */}
           <Link
-            href="/login"
+            href={isLoggedIn ? "/profile" : "/login"}
             aria-label="person"
             className="p-2 text-primary dark:text-primary-fixed-dim hover:text-primary-container transition-all active:scale-95 transition-transform"
           >
