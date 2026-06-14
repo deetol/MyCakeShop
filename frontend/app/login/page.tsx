@@ -94,6 +94,7 @@ export default function LoginPage() {
           <Image
             alt="Warm bakery scene"
             fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
             priority
             className="object-cover transition-transform duration-700 group-hover:scale-105"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ym1PhlKNisLQ-7eZmWitlVvsxXnNXcayiheGGq0ZSNaqgZD3SC_swzJ-hTCIhkoeDKXcWOm0UnOw3TeqxuwyxaNG_olmEKT_WyAAp4DAhBtRy0xJ8oVCDtkNxQfhUutilK7V58-qR1qFGnfiEGnQcfXXfrdT3bHMHg7TSV5k8Rll9SMONgwibc9lg1De4JiOz_JMV-tA909KFqP_TXe6M6beLe_CWiIcajxHwdj_CCyH38EuGlGB46D9fcJQYd2LZowKX6a2hbI8"
@@ -101,10 +102,10 @@ export default function LoginPage() {
           {/* Glassmorphism overlay badge */}
           <div className="absolute bottom-8 left-8 right-8 backdrop-blur-md bg-surface/80 p-6 rounded-lg border border-surface-bright/50">
             <h2 className="font-headline-md text-headline-md text-primary mb-2 font-bold">
-              Warmth in every bite.
+              Kehangatan di setiap gigitan.
             </h2>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Sign in to continue your journey with our freshly baked, traditional flavors crafted for modern moments.
+              Masuk untuk melanjutkan perjalanan Anda dengan rasa tradisional yang kami buat untuk momen modern.
             </p>
           </div>
         </div>
@@ -118,7 +119,7 @@ export default function LoginPage() {
               MyCakeShop
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              Welcome back! Please enter your details.
+              Selamat datang kembali! Silakan masukkan detail Anda.
             </p>
           </div>
 
@@ -150,7 +151,7 @@ export default function LoginPage() {
                   : "text-on-surface-variant hover:text-primary"
               }`}
             >
-              Phone Number
+              Nomor Telepon
             </button>
           </div>
 
@@ -161,7 +162,7 @@ export default function LoginPage() {
             {loginMethod === "email" ? (
               <div className="space-y-1.5">
                 <label className="block font-label-sm text-label-sm text-on-surface font-semibold" htmlFor="email">
-                  Email Address
+                  Alamat Email
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
@@ -181,7 +182,7 @@ export default function LoginPage() {
             ) : (
               <div className="space-y-1.5">
                 <label className="block font-label-sm text-label-sm text-on-surface font-semibold" htmlFor="phone">
-                  Phone Number
+                  Nomor Telepon
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
@@ -190,7 +191,7 @@ export default function LoginPage() {
                   <input
                     className="w-full bg-surface-bright border border-outline-variant text-on-surface rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md placeholder:text-on-surface-variant/50"
                     id="phone"
-                    placeholder="+62 812 3456 7890"
+                    placeholder="081234567890"
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -204,13 +205,13 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
                 <label className="block font-label-sm text-label-sm text-on-surface font-semibold" htmlFor="password">
-                  Password
+                  Kata Sandi
                 </label>
                 <Link
                   className="font-label-sm text-label-sm text-primary hover:text-primary-container transition-colors font-semibold"
                   href="#"
                 >
-                  Forgot Password?
+                  Lupa Kata Sandi?
                 </Link>
               </div>
               <div className="relative">
@@ -248,7 +249,7 @@ export default function LoginPage() {
                 onChange={(e) => setRememberMe(e.target.checked)}
               />
               <label className="font-body-md text-body-md text-on-surface-variant cursor-pointer select-none text-[14px]" htmlFor="remember">
-                Remember me
+                Ingat saya
               </label>
             </div>
 
@@ -262,7 +263,7 @@ export default function LoginPage() {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 ) : (
-                  "Login to MyCakeShop"
+                  "Masuk ke MyCakeShop"
                 )}
               </button>
             </div>
@@ -272,7 +273,7 @@ export default function LoginPage() {
           <div className="flex items-center my-6">
             <div className="flex-grow border-t border-outline-variant/40"></div>
             <span className="px-3 font-label-sm text-label-sm text-on-surface-variant">
-              or continue with
+              atau lanjutkan dengan
             </span>
             <div className="flex-grow border-t border-outline-variant/40"></div>
           </div>
@@ -295,9 +296,9 @@ export default function LoginPage() {
 
           {/* Registration Link */}
           <p className="text-center mt-8 font-body-md text-body-md text-on-surface-variant">
-            Don't have an account?{" "}
+            Belum punya akun?{" "}
             <Link className="text-primary font-bold hover:underline decoration-2 underline-offset-4" href="/register">
-              Sign up
+              Daftar di sini
             </Link>
           </p>
         </div>
