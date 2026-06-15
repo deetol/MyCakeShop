@@ -37,10 +37,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-background font-body-md text-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-      </body>
+  <AuthProvider>
+    <CartProvider>
+      {children}
+    </CartProvider>
+  </AuthProvider>
+</body>
     </html>
   );
 }
