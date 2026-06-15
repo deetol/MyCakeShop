@@ -7,6 +7,27 @@ import Image from "next/image";
 
 type RegisterMethod = "email" | "phone";
 
+interface ApiErrorResponse {
+  success: false;
+  message: string;
+  errors?: Record<string, string[]>;
+}
+
+interface ApiSuccessResponse {
+  success: true;
+  message: string;
+  data: {
+    user: {
+      id: number;
+      name: string;
+      email?: string;
+      phone?: string;
+      role: string;
+    };
+    token: string;
+  };
+}
+
 export default function RegisterPage() {
   const router = useRouter();
 
@@ -14,6 +35,7 @@ export default function RegisterPage() {
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [password, setPassword] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
 
@@ -29,11 +51,16 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (!agreeTerms) {
-      setError("Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi.");
-      return;
-    }
+  setError("Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi.");
+  return;
+}
 
-    setLoading(true);
+if (password !== passwordConfirmation) {
+  setError("Konfirmasi password tidak cocok.");
+  return;
+}
+
+setLoading(true);
     setError("");
 
     try {
@@ -45,38 +72,38 @@ export default function RegisterPage() {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          name: fullname,
-          email: registerMethod === "email" ? email : undefined,
-          phone: registerMethod === "phone" ? phone : undefined,
-          password: password,
-        }),
+        name: fullname,
+        email:  registerMethod === "email"? email: null,
+        phone: registerMethod === "phone"? phone: null,
+        password, password_confirmation:passwordConfirmation,
+      }),
       });
 
-      const data = await response.json();
+      const data: ApiSuccessResponse | ApiErrorResponse = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Pendaftaran gagal");
+        const errorData = data as ApiErrorResponse;
+        const firstError = errorData.errors 
+          ? Object.values(errorData.errors)[0][0]
+          : errorData.message;
+
+        throw new Error(firstError || "Pendaftaran gagal");
       }
 
       // Automatically log them in with the registered user data
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/profile");
+      const successData = data as ApiSuccessResponse;
+      localStorage.setItem("user", JSON.stringify(successData.data.user));
+      localStorage.setItem("token", successData.data.token);
+      router.push("/dashboard");
     } catch (err) {
-      console.warn("API Connection failed, falling back to mock registration.", err);
-
-      // Fallback Mock Auto-Login on success
-      const mockUser = {
-        id: `mock-user-${Date.now()}`,
-        name: fullname,
-        email: registerMethod === "email" ? email : "customer@example.com",
-        phone: registerMethod === "phone" ? phone : "+62 812 3456 7890",
-      };
-
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      router.push("/profile");
-    } finally {
-      setLoading(false);
-    }
+  setError(
+    err instanceof Error
+      ? err.message
+      : "Pendaftaran gagal"
+  );
+} finally {
+  setLoading(false);
+}
   };
 
   if (!mounted) {
@@ -232,7 +259,6 @@ export default function RegisterPage() {
                   minLength={8}
                 />
               </div>
-              <p className="text-xs text-on-surface-variant mt-1">Minimal 8 karakter.</p>
             </div>
 
             {/* Terms */}

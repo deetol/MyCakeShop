@@ -41,10 +41,9 @@ export default function LoginPage() {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          email: loginMethod === "email" ? email : undefined,
-          phone: loginMethod === "phone" ? phone : undefined,
-          password: password,
-        }),
+        login: loginMethod === "email" ? email : phone,
+        password,
+      }),
       });
 
       const data = await response.json();
@@ -52,23 +51,16 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data.message || "Login gagal");
       }
-
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/profile");
+      localStorage.setItem( "user", JSON.stringify(data.data.user));
+      localStorage.setItem( "token", data.data.token);
+      router.push("/dashboard");
     } catch (err) {
-      console.warn("API Connection failed or returned error, falling back to mock login.", err);
-      
-      // Fallback Mock Login for testing purposes
-      const mockUser = {
-        id: "mock-user-123",
-        name: loginMethod === "email" ? email.split("@")[0].toUpperCase() : "Customer",
-        email: loginMethod === "email" ? email : "customer@example.com",
-        phone: loginMethod === "phone" ? phone : "+62 812 3456 7890",
-      };
-      
-      localStorage.setItem("user", JSON.stringify(mockUser));
-      router.push("/profile");
-    } finally {
+  setError(
+    err instanceof Error
+      ? err.message
+      : "Login gagal"
+  );
+} finally {
       setLoading(false);
     }
   };

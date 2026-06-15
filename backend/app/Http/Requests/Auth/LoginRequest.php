@@ -19,42 +19,49 @@ final class LoginRequest extends FormRequest
     }
 
     public function rules(): array
-    {
-        return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
-        ];
-    }
+{
+    return [
+        'login' => ['required', 'string'],
+        'password' => ['required', 'string'],
+    ];
+}
 
-    public function attributes(): array
-    {
-        return [
-            'email' => 'Email Address',
-            'password' => 'Password',
-        ];
-    }
+public function attributes(): array
+{
+    return [
+        'login' => 'Email atau Nomor Telepon',
+        'password' => 'Password',
+    ];
+}
 
     /**
      * @throws ValidationException
      */
-    public function authenticate(): void
-    {
+   public function authenticate(): void
+{
         $this->ensureIsNotRateLimited();
+        $login = $this->input('login');
+        $password = $this->input('password');
 
-        $credentials = $this->only('email', 'password');
-        $remember = $this->boolean('remember');
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL)
+            ? 'email'
+            : 'phone';
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt([
+            $field => $login,
+            'password' => $password,
+        ])) {
+
             RateLimiter::hit($this->throttleKey(), 60);
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'login' => 'Email/nomor telepon atau password salah.',
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
-    }
 
+}
     /**
      * @throws ValidationException
      */
@@ -69,15 +76,16 @@ final class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
+    'login' => trans('auth.throttle', [
+        'seconds' => $seconds,
+        'minutes' => ceil($seconds / 60),
+    ]),
+]);
     }
 
     protected function throttleKey(): string
-    {
-        return Str::lower($this->input('email')) . '|' . $this->ip();
-    }
+{
+return Str::lower((string) $this->input('login')) . '|' . $this->ip();
+}
+
 }
