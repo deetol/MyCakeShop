@@ -56,4 +56,12 @@ final class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    /**
+     * Get the cart items for the user
+     */
+    public function cartItems()
+    {
+        return $this->hasMany(CartItem::class);
+    }
 }
