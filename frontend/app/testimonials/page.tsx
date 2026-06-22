@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -17,6 +18,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD5TD6mHL3TvMkiKckxDRX-NIsD2p9p_wP4nTtfz6juSikIMWhnjUhB-0uENPisv5MEgw1KTSIm7D9obA6dEyAKGMbrRVygc0beK7uDrvjgPTdwvlFT-jbtuJ0SVGcathIl09x3LjOUFtqlcXEzJTbKb1wPEDI7APy58NJ-VKz--lSvJvPEz-rdIafBFn7sIgTAa1Hta0eDXJPBrO_r8W_AOP045ffgEg8S81jqe5feJbwUYWrYa7aAaFLYRZB6tKGYRoGv55YoaYBL",
     name: "Siti Rahayu",
     role: "Pecinta Roti",
+    product: "Roti Sisir Klasik",
   },
   {
     id: 2,
@@ -25,6 +27,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuC77lSilF37K3civ1s4XATcYCRacfyrB0iuFY1i0C9ibFzTqsKdjGCFZUvS3V6UVJ7aWrVitoJD019pdyScvvu56pOMZ_XFRENTHxOtLO0AfWX5_sCWuTB0Egw_IltepI9jRy0a6SpKZM__d_cPzvEnhG2U3ck3lGjI5fGMRTK7zN8Mutprhw8tybNuibTonAH8mxA1WpOoH2By_xEBfzUw_V5oZRsyzK3R8aMFnWsD76V-JPTxpmFVpnNy5M5-Cu74staI-Mp8D5tj",
     name: "Budi Santoso",
     role: "Pelanggan Setia",
+    product: "Hampers Hari Raya",
   },
   {
     id: 3,
@@ -33,6 +36,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDdg0qK7l1BiE7VVfxD88EIgVyKIinDr5oS20odG0ZsKn2iCOf26_2MarJ-pL9LkMGmnN4hugN1pBNQgkT1y9hdhbrmSTyeE-1ulseE6Y6HCOKV-cq5fmzm9xHKNGQMJAWqzed7wRAaSFN-KYGub0mHfP-lNm9JMEcRawTpWpupiN2fPzSs_sXLq_ALXC3q2Fz3CnUROSNycmd3xY-cmqvxnBSIvdMeoAL7_sPiR-7MowfT352vHkeK59rT133vRrA70PSkk5A_LEEq",
     name: "Linda Wijaya",
     role: "Ibu Rumah Tangga",
+    product: "Roti Sobek Cokelat",
   },
   {
     id: 4,
@@ -41,6 +45,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuC77lSilF37K3civ1s4XATcYCRacfyrB0iuFY1i0C9ibFzTqsKdjGCFZUvS3V6UVJ7aWrVitoJD019pdyScvvu56pOMZ_XFRENTHxOtLO0AfWX5_sCWuTB0Egw_IltepI9jRy0a6SpKZM__d_cPzvEnhG2U3ck3lGjI5fGMRTK7zN8Mutprhw8tybNuibTonAH8mxA1WpOoH2By_xEBfzUw_V5oZRsyzK3R8aMFnWsD76V-JPTxpmFVpnNy5M5-Cu74staI-Mp8D5tj",
     name: "Andi Wijaya",
     role: "Penikmat Kuliner",
+    product: "Lapis Legit Pandan",
   },
   {
     id: 5,
@@ -49,6 +54,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuD5TD6mHL3TvMkiKckxDRX-NIsD2p9p_wP4nTtfz6juSikIMWhnjUhB-0uENPisv5MEgw1KTSIm7D9obA6dEyAKGMbrRVygc0beK7uDrvjgPTdwvlFT-jbtuJ0SVGcathIl09x3LjOUFtqlcXEzJTbKb1wPEDI7APy58NJ-VKz--lSvJvPEz-rdIafBFn7sIgTAa1Hta0eDXJPBrO_r8W_AOP045ffgEg8S81jqe5feJbwUYWrYa7aAaFLYRZB6tKGYRoGv55YoaYBL",
     name: "Dewi Lestari",
     role: "Karyawan Swasta",
+    product: "Kue Sus Susu",
   },
   {
     id: 6,
@@ -57,6 +63,7 @@ const TESTIMONIALS = [
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuC77lSilF37K3civ1s4XATcYCRacfyrB0iuFY1i0C9ibFzTqsKdjGCFZUvS3V6UVJ7aWrVitoJD019pdyScvvu56pOMZ_XFRENTHxOtLO0AfWX5_sCWuTB0Egw_IltepI9jRy0a6SpKZM__d_cPzvEnhG2U3ck3lGjI5fGMRTK7zN8Mutprhw8tybNuibTonAH8mxA1WpOoH2By_xEBfzUw_V5oZRsyzK3R8aMFnWsD76V-JPTxpmFVpnNy5M5-Cu74staI-Mp8D5tj",
     name: "Rizky Pratama",
     role: "Pelanggan Baru",
+    product: "Roti Tawar Gandum",
   },
 ];
 
@@ -134,7 +141,9 @@ export default function TestimonialsPage() {
                   </div>
                   <div>
                     <p className="font-bold text-on-surface text-sm">{t.name}</p>
-                    <p className="text-[10px] text-on-surface-variant">{t.role}</p>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {t.role} &bull; Membeli <span className="font-semibold text-primary">{t.product}</span>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -154,10 +163,13 @@ export default function TestimonialsPage() {
             <p className="font-body-lg text-body-lg mb-10 max-w-xl mx-auto opacity-90 relative z-10">
               Bagikan pengalamanmu menikmati kehangatan MyCakeShop dan dapatkan voucher khusus untuk pembelian berikutnya.
             </p>
-            <button className="inline-flex items-center gap-2 bg-on-primary-container text-primary-container px-10 py-4 rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-lg relative z-10 cursor-pointer">
+            <Link
+              href="/testimonials/create"
+              className="inline-flex items-center gap-2 bg-on-primary-container text-primary-container px-10 py-4 rounded-full font-bold hover:scale-105 active:scale-95 transition-all shadow-lg relative z-10 cursor-pointer"
+            >
               <span>Bagikan Ceritamu</span>
               <span className="material-symbols-outlined">arrow_forward</span>
-            </button>
+            </Link>
           </div>
         </section>
       </main>
