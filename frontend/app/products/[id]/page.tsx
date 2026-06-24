@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,10 +9,13 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { PRODUCTS, ProductData, ProductSizeOption } from "@/data/products";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const { addToCart, setCartOpen } = useCart();
+  const { user } = useAuth();
   
   const id = params?.id as string;
 
@@ -79,6 +82,12 @@ export default function ProductDetailPage() {
   };
 
   const handleAddToCart = () => {
+    // Check if user is authenticated
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    
     const nameWithOption = selectedSize
       ? `${product.name} (${selectedSize.name})`
       : product.name;

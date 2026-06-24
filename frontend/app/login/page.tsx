@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { api, ApiError, ValidationError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 type LoginMethod = "email" | "phone";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
 
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("email");
   const [email, setEmail] = useState("");
@@ -30,37 +33,31 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const identity = loginMethod === "email" ? email : phone;
-
     try {
-      // Try to authenticate with the Laravel API if running
-      const response = await fetch("http://127.0.0.1:8000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
+      // Use the API helper with proper typing
+      const response = await api.post<{ user: any; token: string }>('/login', {
         login: loginMethod === "email" ? email : phone,
-        password,
-      }),
+        password: password,
       });
 
-      const data = await response.json();
+      // Update AuthContext with user and token
+      authLogin(response.data.user, response.data.token);
 
-      if (!response.ok) {
-        throw new Error(data.message || "Login gagal");
+      // Check user role and redirect accordingly
+      if (response.data.user.role === 'admin') {
+        router.push("/admin");
+      } else {
+        router.push("/");
       }
-      localStorage.setItem( "user", JSON.stringify(data.data.user));
-      localStorage.setItem( "token", data.data.token);
-      router.push("/dashboard");
     } catch (err) {
-  setError(
-    err instanceof Error
-      ? err.message
-      : "Login gagal"
-  );
-} finally {
+      if (err instanceof ValidationError) {
+        setError(err.getFirstError());
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Login gagal. Silakan coba lagi.");
+      }
+    } finally {
       setLoading(false);
     }
   };

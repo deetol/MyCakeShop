@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
@@ -17,13 +19,38 @@ export default function CartPage() {
     clearCart,
   } = useCart();
 
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+
+  // Check authentication
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
 
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Show loading while checking authentication
+  if (loading || !user) {
+    return (
+      <>
+        <Navbar />
+        <main className="flex-grow w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 md:py-16 flex items-center justify-center">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-on-surface-variant font-medium">Memeriksa autentikasi...</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   if (!mounted) {
     return (

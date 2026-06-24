@@ -6,6 +6,9 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
+import MapPicker from "@/components/MapPicker";
+import { useAuth } from "@/context/AuthContext";
+import { api, ApiError, ValidationError } from "@/lib/api";
 
 interface Address {
   id: string;
@@ -21,30 +24,20 @@ interface Address {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user, token, loading: authLoading, logout: authLogout, login: updateAuth } = useAuth();
 
   // Profile fields state
-  const [name, setName] = useState("John Doe");
-  const [email, setEmail] = useState("john@example.com");
-  const [phone, setPhone] = useState("+62 812 3456 7890");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // Address list state
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: "addr-1",
-      label: "Rumah",
-      isDefault: true,
-      name: "John Doe",
-      phone: "+62 812 3456 7890",
-      line: "Jl. Kebon Jeruk Raya No. 15, RT 01/RW 02",
-      city: "Kecamatan Kebon Jeruk, Kota Jakarta Barat",
-      province: "DKI Jakarta",
-      postalCode: "11530",
-    },
-  ]);
+  const [addresses, setAddresses] = useState<Address[]>([]);
 
   // Address modal state
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [modalAddressId, setModalAddressId] = useState<string | null>(null);
   const [modalLabel, setModalLabel] = useState("");
   const [modalName, setModalName] = useState("");
@@ -54,57 +47,87 @@ export default function ProfilePage() {
   const [modalProvince, setModalProvince] = useState("");
   const [modalPostalCode, setModalPostalCode] = useState("");
   const [modalIsDefault, setModalIsDefault] = useState(false);
+  const [modalDetailAddress, setModalDetailAddress] = useState("");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [mapInitialLat, setMapInitialLat] = useState(-6.200000);
+  const [mapInitialLng, setMapInitialLng] = useState(106.816666);
 
   const [mounted, setMounted] = useState(false);
 
-  // Load user data from localStorage
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const userObj = JSON.parse(storedUser);
-        if (userObj.name) setName(userObj.name);
-        if (userObj.email) setEmail(userObj.email);
-        if (userObj.phone) setPhone(userObj.phone);
-      }
-      const storedAddresses = localStorage.getItem("mycakeshop_addresses");
-      if (storedAddresses) {
-        setAddresses(JSON.parse(storedAddresses));
-      }
-    } catch (e) {
-      console.error("Failed to load data from storage", e);
-    }
-  }, []);
+  // Fetch addresses from backend
+  const fetchAddresses = async () => {
+    if (!token) return;
 
-  const saveAddressesToStorage = (newAddresses: Address[]) => {
-    setAddresses(newAddresses);
     try {
-      localStorage.setItem("mycakeshop_addresses", JSON.stringify(newAddresses));
-    } catch (e) {
-      console.error("Failed to save addresses to localStorage", e);
+      const response = await api.get<any[]>('/addresses', token);
+      
+      // Map backend addresses to frontend format
+      const mappedAddresses: Address[] = response.data.map((addr: any) => ({
+        id: addr.id.toString(),
+        label: addr.label || 'Alamat',
+        isDefault: addr.is_default || false,
+        name: addr.recipient_name,
+        phone: addr.recipient_phone,
+        line: addr.address_line,
+        city: addr.city,
+        province: addr.province,
+        postalCode: addr.postal_code,
+      }));
+      
+      setAddresses(mappedAddresses);
+    } catch (error) {
+      console.warn('Failed to fetch addresses from backend');
     }
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Load user data
+  useEffect(() => {
+    setMounted(true);
+    
+    // Check if user is authenticated
+    if (!authLoading && !user) {
+      router.push("/login");
+      return;
+    }
+
+    // Load user data from auth context
+    if (user) {
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
+      
+      // Load addresses from backend
+      fetchAddresses();
+    }
+  }, [authLoading, user, router]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditingProfile(false);
+    
     try {
-      const storedUser = localStorage.getItem("user");
-      const baseUser = storedUser ? JSON.parse(storedUser) : {};
-      localStorage.setItem("user", JSON.stringify({ ...baseUser, name, email, phone }));
-    } catch (e) {
-      console.error("Failed to save profile", e);
+      const response = await api.put<{ user: any }>('/profile', {
+        name: name,
+        phone: phone,
+        // Note: email is read-only in backend
+      }, token);
+
+      // Update AuthContext with new user data
+      updateAuth(response.data.user, token!);
+      setIsEditingProfile(false);
+      alert('Profil berhasil diperbarui!');
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        alert(error.getFirstError());
+      } else if (error instanceof ApiError) {
+        alert(error.message);
+      } else {
+        alert('Gagal menyimpan profil. Silakan coba lagi.');
+      }
     }
   };
 
   const handleLogout = () => {
-    try {
-      localStorage.removeItem("user");
-    } catch (e) {
-      console.error(e);
-    }
-    router.push("/login");
+    authLogout();
   };
 
   const handleOpenAddressModal = (address?: Address) => {
@@ -112,79 +135,96 @@ export default function ProfilePage() {
       setModalAddressId(address.id);
       setModalLabel(address.label);
       setModalName(address.name);
-      setModalPhone(address.phone);
+      setModalPhone(address.phone.startsWith('+62') ? address.phone : '+62' + address.phone.replace(/^0/, ''));
       setModalLine(address.line);
       setModalCity(address.city);
       setModalProvince(address.province);
       setModalPostalCode(address.postalCode);
+      setModalDetailAddress(""); // Reset detail address for editing
       setModalIsDefault(address.isDefault);
     } else {
       setModalAddressId(null);
-      setModalLabel("");
+      setModalLabel("Rumah");
       setModalName(name);
-      setModalPhone(phone);
+      setModalPhone(phone.startsWith('+62') ? phone : '+62' + phone.replace(/^0/, ''));
       setModalLine("");
       setModalCity("");
       setModalProvince("");
       setModalPostalCode("");
+      setModalDetailAddress("");
       setModalIsDefault(addresses.length === 0);
     }
     setShowAddressModal(true);
   };
 
-  const handleSaveAddress = (e: React.FormEvent) => {
+  const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
-    let newAddresses = [...addresses];
 
-    if (modalIsDefault) {
-      newAddresses = newAddresses.map((addr) => ({ ...addr, isDefault: false }));
+    // Custom validation untuk nomor telepon
+    const phoneDigits = modalPhone.replace(/^\+62/, '');
+    if (!phoneDigits || phoneDigits.length < 9) {
+      alert('Nomor telepon minimal 9 digit (contoh: 81234567890)');
+      return;
     }
 
-    if (modalAddressId) {
-      // Edit existing
-      newAddresses = newAddresses.map((addr) =>
-        addr.id === modalAddressId
-          ? {
-              ...addr,
-              label: modalLabel,
-              name: modalName,
-              phone: modalPhone,
-              line: modalLine,
-              city: modalCity,
-              province: modalProvince,
-              postalCode: modalPostalCode,
-              isDefault: modalIsDefault,
-            }
-          : addr
-      );
-    } else {
-      // Add new
-      newAddresses.push({
-        id: `addr-${Date.now()}`,
+    // Validasi kode pos
+    if (!modalPostalCode || modalPostalCode.length !== 5) {
+      alert('Kode pos harus 5 digit');
+      return;
+    }
+
+    try {
+      const addressData = {
         label: modalLabel,
-        name: modalName,
-        phone: modalPhone,
-        line: modalLine,
+        recipient_name: modalName,
+        recipient_phone: modalPhone,
+        address_line: modalLine,
         city: modalCity,
         province: modalProvince,
-        postalCode: modalPostalCode,
-        isDefault: modalIsDefault,
-      });
-    }
+        postal_code: modalPostalCode,
+        is_default: modalIsDefault,
+      };
 
-    // Default address always first
-    newAddresses.sort((a, b) => (a.isDefault ? -1 : b.isDefault ? 1 : 0));
-    saveAddressesToStorage(newAddresses);
-    setShowAddressModal(false);
+      if (modalAddressId) {
+        // Edit existing address
+        await api.put(`/addresses/${modalAddressId}`, addressData, token);
+      } else {
+        // Add new address
+        await api.post('/addresses', addressData, token);
+      }
+
+      // Refresh addresses from backend
+      await fetchAddresses();
+      setShowAddressModal(false);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        alert(error.getFirstError());
+      } else if (error instanceof ApiError) {
+        alert(error.message);
+      } else {
+        alert('Gagal menyimpan alamat. Silakan coba lagi.');
+      }
+    }
   };
 
-  const handleDeleteAddress = (id: string, e: React.MouseEvent) => {
+  const handleDeleteAddress = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    let newAddresses = addresses.filter((addr) => addr.id !== id);
-    if (addresses.find((a) => a.id === id)?.isDefault && newAddresses.length > 0) {
-      newAddresses[0].isDefault = true;
+    
+    if (!confirm('Apakah Anda yakin ingin menghapus alamat ini?')) {
+      return;
     }
-    saveAddressesToStorage(newAddresses);
+
+    try {
+      await api.delete(`/addresses/${id}`, token);
+      // Refresh addresses from backend
+      await fetchAddresses();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        alert(error.message);
+      } else {
+        alert('Gagal menghapus alamat. Silakan coba lagi.');
+      }
+    }
   };
 
   const getInitials = (fullName: string) =>
@@ -329,16 +369,12 @@ export default function ProfilePage() {
                       className="px-6 py-2 rounded-lg border border-outline-variant text-on-surface-variant font-body-md text-body-md hover:bg-surface-container transition-colors"
                       onClick={() => {
                         setIsEditingProfile(false);
-                        // Reset to stored values
-                        try {
-                          const storedUser = localStorage.getItem("user");
-                          if (storedUser) {
-                            const u = JSON.parse(storedUser);
-                            if (u.name) setName(u.name);
-                            if (u.email) setEmail(u.email);
-                            if (u.phone) setPhone(u.phone);
-                          }
-                        } catch {}
+                        // Reset to current user values
+                        if (user) {
+                          setName(user.name || "");
+                          setEmail(user.email || "");
+                          setPhone(user.phone || "");
+                        }
                       }}
                     >
                       Batal
@@ -432,9 +468,9 @@ export default function ProfilePage() {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setShowAddressModal(false)}
           />
-          <div className="bg-surface rounded-2xl max-w-lg w-full p-6 shadow-xl border border-surface-container relative z-10">
-            <div className="flex justify-between items-center border-b border-surface-container pb-4 mb-4">
-              <h2 className="font-headline-md text-lg text-primary font-bold">
+          <div className="bg-surface rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl border border-surface-container relative z-10">
+            <div className="flex justify-between items-center border-b border-surface-container pb-4 mb-6">
+              <h2 className="font-headline-md text-xl text-primary font-bold">
                 {modalAddressId ? "Ubah Alamat Pengiriman" : "Tambah Alamat Pengiriman"}
               </h2>
               <button
@@ -445,133 +481,346 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveAddress} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                    Label Alamat (misal: Rumah, Kantor)
-                  </label>
+            <form onSubmit={handleSaveAddress} className="space-y-5">
+              {/* Nama Penerima - Full Width */}
+              <div>
+                <label className="block text-sm font-semibold text-on-surface mb-2">
+                  Nama Penerima <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                    person
+                  </span>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
-                    value={modalLabel}
-                    onChange={(e) => setModalLabel(e.target.value)}
-                    placeholder="Rumah / Kantor"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                    Nama Penerima
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
+                    className="w-full pl-11 pr-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={modalName}
                     onChange={(e) => setModalName(e.target.value)}
+                    placeholder="Nama lengkap penerima"
                     required
+                  />
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1 ml-1">
+                  Nama ini akan digunakan saat kurir mengirim pesanan
+                </p>
+              </div>
+
+              {/* Nomor Telepon dengan +62 */}
+              <div>
+                <label className="block text-sm font-semibold text-on-surface mb-2">
+                  Nomor Telepon <span className="text-error">*</span>
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
+                    call
+                  </span>
+                  <div className="absolute left-11 top-1/2 -translate-y-1/2 text-on-surface font-medium text-sm select-none pointer-events-none">
+                    +62
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    className="w-full pl-[76px] pr-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={modalPhone.replace(/^\+62/, '')}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 13) {
+                        setModalPhone('+62' + value);
+                      }
+                    }}
+                    onInvalid={(e) => {
+                      e.preventDefault();
+                      const input = e.target as HTMLInputElement;
+                      const value = modalPhone.replace(/^\+62/, '');
+                      if (!value) {
+                        input.setCustomValidity('Nomor telepon harus diisi');
+                      } else if (value.length < 9) {
+                        input.setCustomValidity('Nomor telepon minimal 9 digit (contoh: 81234567890)');
+                      } else {
+                        input.setCustomValidity('');
+                      }
+                    }}
+                    onInput={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      input.setCustomValidity('');
+                    }}
+                    placeholder="81234567890"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1 ml-1">
+                  Nomor aktif untuk dihubungi kurir (minimal 9 digit, tanpa 0 di depan)
+                </p>
+              </div>
+
+              {/* Label Alamat */}
+              <div>
+                <label className="block text-sm font-semibold text-on-surface mb-2">
+                  Label Alamat <span className="text-error">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['Rumah', 'Kantor', 'Apartemen'].map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setModalLabel(label)}
+                      className={`px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                        modalLabel === label
+                          ? 'border-primary bg-primary-container text-on-primary-container'
+                          : 'border-outline-variant text-on-surface-variant hover:border-primary'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    className="w-full px-4 py-2.5 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={!['Rumah', 'Kantor', 'Apartemen'].includes(modalLabel) ? modalLabel : ''}
+                    onChange={(e) => setModalLabel(e.target.value)}
+                    placeholder="Atau tulis label custom (misal: Kost, Toko)"
                   />
                 </div>
               </div>
 
+              {/* Pilih Lokasi dengan Maps */}
               <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Nomor Telepon
+                <label className="block text-sm font-semibold text-on-surface mb-2">
+                  Pilih Lokasi <span className="text-error">*</span>
                 </label>
-                <input
-                  type="tel"
-                  className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
-                  value={modalPhone}
-                  onChange={(e) => setModalPhone(e.target.value)}
-                  required
-                />
+                
+                {/* Single Location Button with Map */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if ('geolocation' in navigator) {
+                      setIsGettingLocation(true);
+                      
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          const { latitude, longitude } = position.coords;
+                          // Set koordinat untuk map
+                          setMapInitialLat(latitude);
+                          setMapInitialLng(longitude);
+                          setIsGettingLocation(false);
+                          // Langsung buka peta dengan lokasi yang terdeteksi
+                          setShowMapPicker(true);
+                        },
+                        (error) => {
+                          setIsGettingLocation(false);
+                          // Jika user menolak atau error, tetap buka peta di lokasi default
+                          setMapInitialLat(-6.200000);
+                          setMapInitialLng(106.816666);
+                          setShowMapPicker(true);
+                        }
+                      );
+                    } else {
+                      // Browser tidak support, buka peta di lokasi default
+                      setMapInitialLat(-6.200000);
+                      setMapInitialLng(106.816666);
+                      setShowMapPicker(true);
+                    }
+                  }}
+                  disabled={isGettingLocation}
+                  className="w-full mb-4 py-3 border-2 border-primary text-primary rounded-lg text-sm font-medium flex items-center justify-center gap-2 hover:bg-primary hover:text-on-primary transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGettingLocation ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                      <span>Mendeteksi lokasi...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[20px]">location_on</span>
+                      <span>Pilih Lokasi dari Peta</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Manual Address Input */}
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-[20px]">
+                    location_on
+                  </span>
+                  <textarea
+                    className="w-full pl-11 pr-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    value={modalLine}
+                    onChange={(e) => setModalLine(e.target.value)}
+                    placeholder="Masukkan alamat lengkap&#10;Contoh: Jl. Sudirman No. 123, RT 01/RW 05, Kelurahan Senayan, Kebayoran Baru"
+                    required
+                    rows={3}
+                    minLength={10}
+                  />
+                </div>
+                
+                <p className="text-xs text-on-surface-variant mt-2 ml-1 flex items-start gap-1">
+                  <span className="material-symbols-outlined text-[14px] mt-0.5">info</span>
+                  <span>Klik tombol di atas untuk membuka peta, pilih lokasi dengan klik atau geser marker. Alamat akan terisi otomatis berdasarkan lokasi yang dipilih.</span>
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  Detail Alamat (Jalan, No Rumah, RT/RW)
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
-                  value={modalLine}
-                  onChange={(e) => setModalLine(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
+              {/* Kota, Provinsi, Kode Pos */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                    Kota / Kecamatan
+                  <label className="block text-sm font-semibold text-on-surface mb-2">
+                    Kota <span className="text-error">*</span>
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
+                    className="w-full px-4 py-2.5 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={modalCity}
                     onChange={(e) => setModalCity(e.target.value)}
+                    placeholder="Jakarta Selatan"
                     required
+                    minLength={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                    Provinsi
+                  <label className="block text-sm font-semibold text-on-surface mb-2">
+                    Provinsi <span className="text-error">*</span>
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
+                    className="w-full px-4 py-2.5 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={modalProvince}
                     onChange={(e) => setModalProvince(e.target.value)}
+                    placeholder="DKI Jakarta"
                     required
+                    minLength={3}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                    Kode Pos
+                  <label className="block text-sm font-semibold text-on-surface mb-2">
+                    Kode Pos <span className="text-error">*</span>
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-sm"
+                    inputMode="numeric"
+                    className="w-full px-4 py-2.5 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={modalPostalCode}
-                    onChange={(e) => setModalPostalCode(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 5) {
+                        setModalPostalCode(value);
+                      }
+                    }}
+                    onInvalid={(e) => {
+                      e.preventDefault();
+                      const input = e.target as HTMLInputElement;
+                      if (!modalPostalCode) {
+                        input.setCustomValidity('Kode pos harus diisi');
+                      } else if (modalPostalCode.length !== 5) {
+                        input.setCustomValidity('Kode pos harus 5 digit');
+                      } else {
+                        input.setCustomValidity('');
+                      }
+                    }}
+                    onInput={(e) => {
+                      const input = e.target as HTMLInputElement;
+                      input.setCustomValidity('');
+                    }}
+                    placeholder="12345"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="modalIsDefault"
-                  checked={modalIsDefault}
-                  disabled={addresses.length === 0 && modalIsDefault}
-                  onChange={(e) => setModalIsDefault(e.target.checked)}
-                  className="rounded border-outline-variant text-primary focus:ring-primary"
-                />
-                <label htmlFor="modalIsDefault" className="text-xs font-semibold text-on-surface-variant cursor-pointer">
-                  Jadikan Alamat Utama
+              {/* Detail Alamat (Optional) */}
+              <div>
+                <label className="block text-sm font-semibold text-on-surface mb-2">
+                  Catatan Tambahan <span className="text-on-surface-variant text-xs font-normal">(Opsional)</span>
                 </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-3 text-on-surface-variant text-[20px]">
+                    note
+                  </span>
+                  <textarea
+                    className="w-full pl-11 pr-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                    value={modalDetailAddress}
+                    onChange={(e) => setModalDetailAddress(e.target.value)}
+                    placeholder="Patokan: Dekat minimarket, rumah pagar hijau, lantai 3 unit 305"
+                    rows={2}
+                    maxLength={200}
+                  />
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1 ml-1">
+                  Informasi tambahan untuk memudahkan kurir menemukan lokasi
+                </p>
               </div>
 
-              <div className="flex justify-end space-x-3 border-t border-surface-container pt-4 mt-6">
+              {/* Toggle Default Address */}
+              <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:border-primary transition-colors">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-grow">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-primary text-[20px]">
+                        star
+                      </span>
+                      <span className="text-sm font-semibold text-on-surface">
+                        Jadikan Alamat Utama
+                      </span>
+                    </div>
+                    <p className="text-xs text-on-surface-variant ml-7">
+                      Alamat ini akan otomatis terpilih saat checkout
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalIsDefault(!modalIsDefault)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                      modalIsDefault ? 'bg-primary' : 'bg-outline-variant'
+                    }`}
+                    role="switch"
+                    aria-checked={modalIsDefault}
+                    aria-label="Jadikan alamat utama"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                        modalIsDefault ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-surface-container pt-6 mt-6">
                 <button
                   type="button"
                   onClick={() => setShowAddressModal(false)}
-                  className="px-4 py-2 border border-outline-variant rounded-lg text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+                  className="w-full sm:w-auto px-6 py-2.5 border-2 border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-all"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-primary-container transition-colors"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-primary-container hover:shadow-md transition-all flex items-center justify-center gap-2"
                 >
-                  Simpan
+                  <span className="material-symbols-outlined text-[18px]">check</span>
+                  {modalAddressId ? 'Update Alamat' : 'Simpan Alamat'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Map Picker Modal */}
+      <MapPicker
+        isOpen={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onSelectLocation={(location) => {
+          // Update semua field alamat dengan data dari reverse geocoding
+          setModalLine(location.address);
+          if (location.city) setModalCity(location.city);
+          if (location.province) setModalProvince(location.province);
+          if (location.postalCode) setModalPostalCode(location.postalCode);
+        }}
+        initialLat={mapInitialLat}
+        initialLng={mapInitialLng}
+      />
 
       <Footer />
       <CartDrawer />

@@ -4,32 +4,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { api, ApiError, ValidationError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 type RegisterMethod = "email" | "phone";
 
-interface ApiErrorResponse {
-  success: false;
-  message: string;
-  errors?: Record<string, string[]>;
-}
-
-interface ApiSuccessResponse {
-  success: true;
-  message: string;
-  data: {
-    user: {
-      id: number;
-      name: string;
-      email?: string;
-      phone?: string;
-      role: string;
-    };
-    token: string;
-  };
-}
-
 export default function RegisterPage() {
   const router = useRouter();
+  const { login: authLogin } = useAuth();
 
   const [registerMethod, setRegisterMethod] = useState<RegisterMethod>("email");
   const [fullname, setFullname] = useState("");
@@ -51,59 +33,48 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (!agreeTerms) {
-  setError("Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi.");
-  return;
-}
+      setError("Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi.");
+      return;
+    }
 
-if (password !== passwordConfirmation) {
-  setError("Konfirmasi password tidak cocok.");
-  return;
-}
+    if (password !== passwordConfirmation) {
+      setError("Konfirmasi password tidak cocok.");
+      return;
+    }
 
-setLoading(true);
+    setLoading(true);
     setError("");
 
     try {
-      // Try to register with Laravel API
-      const response = await fetch("http://127.0.0.1:8000/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
+      // Use the API helper with proper typing
+      const response = await api.post<{ user: any; token: string }>('/register', {
         name: fullname,
-        email:  registerMethod === "email"? email: null,
-        phone: registerMethod === "phone"? phone: null,
-        password, password_confirmation:passwordConfirmation,
-      }),
+        email: registerMethod === "email" ? email : undefined,
+        phone: registerMethod === "phone" ? phone : undefined,
+        password: password,
+        password_confirmation: passwordConfirmation,
       });
 
-      const data: ApiSuccessResponse | ApiErrorResponse = await response.json();
+      // Update AuthContext with new user and token
+      authLogin(response.data.user, response.data.token);
 
-      if (!response.ok) {
-        const errorData = data as ApiErrorResponse;
-        const firstError = errorData.errors 
-          ? Object.values(errorData.errors)[0][0]
-          : errorData.message;
-
-        throw new Error(firstError || "Pendaftaran gagal");
+      // Check user role and redirect accordingly
+      if (response.data.user.role === 'admin') {
+        router.push("/dashboard");
+      } else {
+        router.push("/");
       }
-
-      // Automatically log them in with the registered user data
-      const successData = data as ApiSuccessResponse;
-      localStorage.setItem("user", JSON.stringify(successData.data.user));
-      localStorage.setItem("token", successData.data.token);
-      router.push("/dashboard");
     } catch (err) {
-  setError(
-    err instanceof Error
-      ? err.message
-      : "Pendaftaran gagal"
-  );
-} finally {
-  setLoading(false);
-}
+      if (err instanceof ValidationError) {
+        setError(err.getFirstError());
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Pendaftaran gagal. Silakan coba lagi.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!mounted) {
@@ -256,6 +227,25 @@ setLoading(true);
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  minLength={8}
+                />
+              </div>
+            </div>
+
+            {/* Password Confirmation Input */}
+            <div className="space-y-1.5">
+              <label className="block font-label-sm text-label-sm text-on-surface uppercase tracking-wider font-semibold" htmlFor="password_confirmation">Konfirmasi Kata Sandi</label>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">lock</span>
+                <input
+                  className="w-full bg-surface-bright border border-outline-variant text-on-surface rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-md text-body-md placeholder:text-on-surface-variant/50"
+                  id="password_confirmation"
+                  name="password_confirmation"
+                  placeholder="••••••••"
+                  required
+                  type="password"
+                  value={passwordConfirmation}
+                  onChange={(e) => setPasswordConfirmation(e.target.value)}
                   minLength={8}
                 />
               </div>

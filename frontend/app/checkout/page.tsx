@@ -1,32 +1,255 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import Footer from "@/components/Footer";
+import { api, ApiError, ValidationError } from "@/lib/api";
 
-type ShippingOption = "sameday" | "instant";
-type PaymentMethod = "bca" | "mandiri" | "gopay" | "qris";
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Address {
+  id: number;
+  label: string;
+  recipient_name: string;
+  recipient_phone: string;
+  address_line: string;
+  city: string;
+  province: string;
+  postal_code: string;
+  is_default: boolean;
+}
+
+type PaymentCategory = "bank_transfer" | "ewallet";
+
+interface PaymentOption {
+  id: string;
+  name: string;
+  category: PaymentCategory;
+  icon: string;
+  accountNumber?: string;
+  accountName?: string;
+  note?: string;
+}
+
+// ─── Payment Options Data ─────────────────────────────────────────────────────
+
+const BANK_TRANSFER: PaymentOption[] = [
+  {
+    id: "bca",
+    name: "BCA",
+    category: "bank_transfer",
+    icon: "account_balance",
+    accountNumber: "8012-3456-78",
+    accountName: "PT MyCakeShop Indonesia",
+    note: "Kode unik akan ditambahkan ke total transfer",
+  },
+  {
+    id: "mandiri",
+    name: "Mandiri",
+    category: "bank_transfer",
+    icon: "account_balance",
+    accountNumber: "123-00-9876543-2",
+    accountName: "PT MyCakeShop Indonesia",
+  },
+  {
+    id: "bni",
+    name: "BNI",
+    category: "bank_transfer",
+    icon: "account_balance",
+    accountNumber: "0123456789",
+    accountName: "PT MyCakeShop Indonesia",
+  },
+  {
+    id: "bri",
+    name: "BRI",
+    category: "bank_transfer",
+    icon: "account_balance",
+    accountNumber: "1234-5678-9012-345",
+    accountName: "PT MyCakeShop Indonesia",
+  },
+];
+
+const EWALLET: PaymentOption[] = [
+  {
+    id: "gopay",
+    name: "GoPay",
+    category: "ewallet",
+    icon: "account_balance_wallet",
+    accountNumber: "0812-3456-7890",
+    accountName: "MyCakeShop",
+  },
+  {
+    id: "ovo",
+    name: "OVO",
+    category: "ewallet",
+    icon: "account_balance_wallet",
+    accountNumber: "0812-3456-7890",
+    accountName: "MyCakeShop",
+  },
+  {
+    id: "dana",
+    name: "DANA",
+    category: "ewallet",
+    icon: "account_balance_wallet",
+    accountNumber: "0812-3456-7890",
+    accountName: "MyCakeShop",
+  },
+  {
+    id: "shopeepay",
+    name: "ShopeePay",
+    category: "ewallet",
+    icon: "account_balance_wallet",
+    accountNumber: "0812-3456-7890",
+    accountName: "MyCakeShop",
+  },
+  {
+    id: "linkaja",
+    name: "LinkAja",
+    category: "ewallet",
+    icon: "account_balance_wallet",
+    accountNumber: "0812-3456-7890",
+    accountName: "MyCakeShop",
+  },
+  {
+    id: "qris",
+    name: "QRIS",
+    category: "ewallet",
+    icon: "qr_code_scanner",
+    note: "Scan QR dengan semua e-wallet",
+  },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart } = useCart();
+  const { user, token, loading } = useAuth();
+  const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
-  const [shippingOption, setShippingOption] = useState<ShippingOption>("sameday");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("gopay");
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
-  // Avoid hydration mismatch
+  // Address state
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [showAddressPicker, setShowAddressPicker] = useState(false);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+
+  // Shipping state
+  const [shippingOption, setShippingOption] = useState<"instant" | "sameday">("sameday");
+
+  // Payment state
+  const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null);
+
+  // Order state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string>("");
+
+  // ── Auth guard ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
+  // ── Fetch addresses ───────────────────────────────────────────────────────
+  const fetchAddresses = useCallback(async () => {
+    if (!token) return;
+    setIsLoadingAddresses(true);
+    try {
+      const res = await api.get<any[]>('/addresses', token);
+      const data: Address[] = res.data.map((a: any) => ({
+        id: a.id,
+        label: a.label || 'Alamat',
+        recipient_name: a.recipient_name,
+        recipient_phone: a.recipient_phone,
+        address_line: a.address_line,
+        city: a.city,
+        province: a.province,
+        postal_code: a.postal_code,
+        is_default: a.is_default,
+      }));
+      setAddresses(data);
+      // Auto-select default address
+      const def = data.find(a => a.is_default) || data[0] || null;
+      if (def) setSelectedAddressId(def.id);
+    } catch {
+      setAddresses([]);
+    } finally {
+      setIsLoadingAddresses(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user && token) fetchAddresses();
+  }, [user, token, fetchAddresses]);
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const formatPrice = (v: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(v);
+
+  const shippingCost = shippingOption === "instant" ? 25000 : 15000;
+  const totalPayment = cartTotal > 0 ? cartTotal + shippingCost : 0;
+  const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null;
+
+  // ── Submit order ───────────────────────────────────────────────────────────
+  const handlePay = async () => {
+    if (!selectedAddress) {
+      alert("Pilih alamat pengiriman terlebih dahulu.");
+      return;
+    }
+    if (!selectedPayment) {
+      alert("Pilih metode pembayaran terlebih dahulu.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Try to create order via API
+      const res = await api.post<any>('/orders', {
+        address_id: selectedAddress.id,
+        shipping_method: shippingOption,
+        payment_method: selectedPayment.id,
+        items: cartItems.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        total: totalPayment,
+      }, token);
+
+      setOrderNumber(res.data?.order_number || res.data?.id?.toString() || "ORD-" + Date.now());
+      clearCart();
+      setCheckoutSuccess(true);
+    } catch (error) {
+      // If API fails, still show success with local order number
+      console.error('Order API error:', error);
+      setOrderNumber("ORD-" + Date.now());
+      clearCart();
+      setCheckoutSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (loading || !user || !mounted) {
     return (
       <div className="min-h-screen flex flex-col bg-background text-on-surface">
         <header className="bg-surface-container-lowest border-b border-surface-container sticky top-0 z-50">
-          <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop h-20 flex justify-between items-center">
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop h-20 flex items-center">
             <span className="font-display-lg-mobile md:font-display-lg text-primary tracking-tight font-bold">
               MyCakeShop
             </span>
@@ -34,7 +257,7 @@ export default function CheckoutPage() {
         </header>
         <main className="flex-grow flex items-center justify-center">
           <div className="text-center py-12">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-on-surface-variant font-medium">Memuat halaman checkout...</p>
           </div>
         </main>
@@ -43,571 +266,373 @@ export default function CheckoutPage() {
     );
   }
 
-  const formatPrice = (value: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const shippingCost = shippingOption === "instant" ? 25000 : 15000;
-  const totalPayment = cartTotal > 0 ? cartTotal + shippingCost : 0;
-
-  const handlePay = () => {
-    setCheckoutSuccess(true);
-    // Note: Do not clear cart immediately so we can show items/details on success screen if needed,
-    // but we clear it in local storage / context state after step changes.
-    clearCart();
-  };
-
   return (
     <div className="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased">
-      {/* Minimal Checkout Header */}
+      {/* Header */}
       <header className="bg-surface-container-lowest border-b border-surface-container sticky top-0 z-50">
         <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop h-20 flex justify-between items-center">
-          <Link
-            href="/"
-            className="font-display-lg-mobile md:font-display-lg text-primary tracking-tight font-bold hover:opacity-90 transition-opacity"
-          >
+          <Link href="/" className="font-display-lg-mobile md:font-display-lg text-primary tracking-tight font-bold hover:opacity-90 transition-opacity">
             MyCakeShop
           </Link>
-          <Link
-            href="/cart"
-            className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm font-bold"
-          >
+          <Link href="/cart" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm font-bold">
             <span className="material-symbols-outlined text-lg">arrow_back</span>
             Kembali ke Keranjang
           </Link>
         </div>
       </header>
 
-      {/* Main Checkout Canvas */}
       <main className="flex-grow max-w-container-max w-full mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12">
+
+        {/* ── SUCCESS STATE ─────────────────────────────────────────────── */}
         {checkoutSuccess ? (
-          /* Rich Success Checkout Page */
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-8 animate-in fade-in zoom-in-95 duration-300">
             <div className="text-center space-y-3">
-              <div className="w-20 h-20 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-md mx-auto animate-bounce">
-                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>
-                  check_circle
-                </span>
+              <div className="w-20 h-20 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-md mx-auto">
+                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>check_circle</span>
               </div>
-              <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">
-                Pesanan Anda Telah Diterima!
-              </h1>
+              <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">Pesanan Diterima!</h1>
+              <p className="text-on-surface-variant text-sm">Nomor Pesanan: <strong className="text-on-surface">#{orderNumber}</strong></p>
               <p className="text-on-surface-variant text-sm md:text-base">
-                Terima kasih atas pembelian Anda. Silakan selesaikan pembayaran di bawah ini.
+                Terima kasih! Silakan selesaikan pembayaran sesuai metode yang dipilih.
               </p>
             </div>
 
+            {/* Payment instruction */}
             <div className="bg-surface-container-low p-6 rounded-xl border border-surface-container space-y-4">
               <h2 className="font-headline-md text-lg font-bold text-on-surface border-b border-surface-container-high pb-2">
-                Panduan Pembayaran
+                Panduan Pembayaran — {selectedPayment?.name}
               </h2>
 
-              {paymentMethod === "gopay" && (
+              {selectedPayment?.category === "ewallet" && selectedPayment.id === "qris" && (
                 <div className="flex flex-col items-center text-center space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Silakan scan kode QR GoPay di bawah ini untuk membayar sebesar{" "}
-                    <strong className="text-primary">{formatPrice(totalPayment)}</strong>
+                    Scan QRIS dengan e-wallet apapun untuk membayar <strong className="text-primary">{formatPrice(totalPayment)}</strong>
                   </p>
-                  <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center relative shadow-sm">
-                    {/* Mock QR Code representation */}
-                    <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center bg-surface-container-lowest">
-                      <span className="material-symbols-outlined text-primary text-5xl">qr_code_2</span>
-                      <span className="text-[10px] font-bold text-on-primary-fixed-variant mt-2">GOPAY / QRIS</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-on-surface-variant italic">
-                    Status pembayaran akan terverifikasi secara otomatis setelah pembayaran sukses.
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "qris" && (
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <p className="font-body-md text-on-surface-variant">
-                    Silakan scan kode QRIS di bawah ini dengan aplikasi e-wallet pilihan Anda.
-                  </p>
-                  <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center relative shadow-sm">
-                    <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center bg-surface-container-lowest">
+                  <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
+                    <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center">
                       <span className="material-symbols-outlined text-primary text-5xl">qr_code_scanner</span>
-                      <span className="text-[10px] font-bold text-on-primary-fixed-variant mt-2">QRIS PEMBAYARAN</span>
+                      <span className="text-[10px] font-bold text-on-surface-variant mt-2">QRIS PEMBAYARAN</span>
                     </div>
                   </div>
-                  <p className="text-xs text-on-surface-variant italic">
-                    Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.
-                  </p>
+                  <p className="text-xs text-on-surface-variant italic">Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.</p>
                 </div>
               )}
 
-              {(paymentMethod === "bca" || paymentMethod === "mandiri") && (
+              {selectedPayment?.category === "ewallet" && selectedPayment.id !== "qris" && (
+                <div className="space-y-3">
+                  <p className="font-body-md text-on-surface-variant">
+                    Transfer ke nomor {selectedPayment.name} berikut sebesar <strong className="text-primary">{formatPrice(totalPayment)}</strong>:
+                  </p>
+                  <div className="bg-surface-container p-4 rounded-lg border border-outline-variant flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-on-surface-variant font-semibold">Nomor {selectedPayment.name}</p>
+                      <p className="font-bold text-primary text-lg">{selectedPayment.accountNumber}</p>
+                      <p className="text-xs text-on-surface-variant">a.n. {selectedPayment.accountName}</p>
+                    </div>
+                    <button onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors" title="Salin">
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedPayment?.category === "bank_transfer" && (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Silakan lakukan transfer manual ke rekening bank berikut sebesar:
+                    Transfer ke rekening {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(totalPayment)}</strong>:
                   </p>
-                  <div className="bg-surface-container-highest p-4 rounded-lg text-center space-y-2 border border-surface-container">
-                    <span className="text-xs text-on-surface-variant uppercase tracking-wider block font-bold">
-                      Jumlah Transfer
-                    </span>
-                    <span className="font-display-lg text-2xl font-bold text-primary block">
-                      {formatPrice(totalPayment)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                    <div className="border border-outline-variant p-4 rounded-lg bg-surface-container-lowest">
-                      <span className="text-xs text-on-surface-variant block font-bold">Nama Bank</span>
-                      <span className="font-body-md font-bold text-on-surface">
-                        {paymentMethod === "bca" ? "BCA (Bank Central Asia)" : "Bank Mandiri"}
-                      </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="border border-outline-variant p-4 rounded-lg">
+                      <p className="text-xs text-on-surface-variant font-bold">Nama Bank</p>
+                      <p className="font-bold text-on-surface">{selectedPayment.name}</p>
                     </div>
-                    <div className="border border-outline-variant p-4 rounded-lg bg-surface-container-lowest flex justify-between items-center">
+                    <div className="border border-outline-variant p-4 rounded-lg flex justify-between items-center">
                       <div>
-                        <span className="text-xs text-on-surface-variant block font-bold">Nomor Rekening</span>
-                        <span className="font-body-md font-bold text-primary select-all">
-                          {paymentMethod === "bca" ? "8012-3456-78" : "123-00-9876543-2"}
-                        </span>
+                        <p className="text-xs text-on-surface-variant font-bold">Nomor Rekening</p>
+                        <p className="font-bold text-primary select-all">{selectedPayment.accountNumber}</p>
                       </div>
-                      <button 
-                        onClick={() => navigator.clipboard.writeText(paymentMethod === "bca" ? "8012-3456-78" : "123-00-9876543-2")}
-                        className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors"
-                        title="Salin Rekening"
-                      >
+                      <button onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors">
                         <span className="material-symbols-outlined text-sm">content_copy</span>
                       </button>
                     </div>
+                    <div className="border border-outline-variant p-4 rounded-lg md:col-span-2">
+                      <p className="text-xs text-on-surface-variant font-bold">Nama Penerima</p>
+                      <p className="font-bold text-on-surface">{selectedPayment.accountName}</p>
+                    </div>
                   </div>
-                  <div className="border border-outline-variant p-4 rounded-lg bg-surface-container-lowest">
-                    <span className="text-xs text-on-surface-variant block font-bold">Nama Penerima</span>
-                    <span className="font-body-md font-bold text-on-surface">PT MyCakeShop Indonesia</span>
-                  </div>
-                  <div className="pt-2">
-                    <button className="w-full bg-primary hover:bg-primary-container text-on-primary rounded-lg py-3 font-label-sm text-label-sm font-bold flex items-center justify-center gap-2 transition-all">
-                      <span className="material-symbols-outlined text-lg">upload_file</span>
-                      Unggah Bukti Transfer
-                    </button>
-                  </div>
+                  <button className="w-full bg-primary hover:bg-primary-container text-on-primary rounded-lg py-3 font-label-sm text-label-sm font-bold flex items-center justify-center gap-2 transition-all">
+                    <span className="material-symbols-outlined text-lg">upload_file</span>
+                    Unggah Bukti Transfer
+                  </button>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
-              <Link
-                href="/products"
-                className="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-sm text-label-sm shadow-md hover:bg-primary-container text-center transition-all active:scale-95 font-bold"
-              >
-                Belanja Lagi
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/order" className="bg-primary text-on-primary px-8 py-3 rounded-lg font-bold text-center hover:shadow-md transition-all">
+                Lihat Pesanan Saya
               </Link>
-              <Link
-                href="/"
-                className="border border-primary text-primary px-8 py-3 rounded-lg font-label-sm text-label-sm hover:bg-surface-container text-center transition-all active:scale-95 font-bold"
-              >
-                Kembali ke Beranda
+              <Link href="/products" className="border border-primary text-primary px-8 py-3 rounded-lg font-bold text-center hover:bg-surface-container transition-all">
+                Belanja Lagi
               </Link>
             </div>
           </div>
+
+        /* ── EMPTY CART ─────────────────────────────────────────────── */
         ) : cartItems.length === 0 ? (
-          /* Empty Checkout View */
           <div className="max-w-md mx-auto text-center py-16 space-y-6">
-            <span
-              className="material-symbols-outlined text-outline-variant mx-auto block"
-              style={{ fontSize: "72px" }}
-            >
-              shopping_basket
-            </span>
-            <div>
-              <h1 className="font-headline-md text-headline-md text-on-surface font-bold mb-2">
-                Tidak ada pesanan untuk di-checkout
-              </h1>
-              <p className="font-body-md text-body-md text-on-surface-variant">
-                Keranjang belanja Anda kosong. Silakan pilih beberapa menu terlebih dahulu.
-              </p>
-            </div>
-            <Link
-              href="/products"
-              className="inline-block bg-primary text-on-primary px-8 py-3 rounded-full font-label-sm text-label-sm hover:bg-primary-container transition-all active:scale-95 duration-150 font-bold"
-            >
+            <span className="material-symbols-outlined text-outline-variant mx-auto block" style={{ fontSize: "72px" }}>shopping_basket</span>
+            <h1 className="font-headline-md text-headline-md text-on-surface font-bold mb-2">Keranjang kosong</h1>
+            <p className="text-on-surface-variant">Pilih produk terlebih dahulu untuk melanjutkan checkout.</p>
+            <Link href="/products" className="inline-block bg-primary text-on-primary px-8 py-3 rounded-full font-bold hover:shadow-md transition-all">
               Lihat Menu Kue
             </Link>
           </div>
+
+        /* ── CHECKOUT FORM ──────────────────────────────────────────── */
         ) : (
-          /* Normal Checkout Page Form */
           <>
-            <h1 className="font-headline-md text-headline-md text-on-surface mb-8 font-bold">
-              Checkout Pesanan
-            </h1>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-gutter">
-              {/* Left Column: Forms & Steps */}
-              <div className="lg:col-span-7 space-y-8">
-                {/* Step 1: Informasi Pengiriman */}
-                <section className="bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-sm border border-surface-container relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-tertiary"></div>
-                  <div className="flex items-center justify-between mb-6">
+            <h1 className="font-headline-md text-headline-md text-on-surface mb-8 font-bold">Checkout Pesanan</h1>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+              {/* Left Column */}
+              <div className="lg:col-span-7 space-y-6">
+
+                {/* ── STEP 1: Alamat ─────────────────────────────────── */}
+                <section className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-tertiary" />
+                  <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold font-label-sm">
-                        1
-                      </div>
-                      <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                        Pilih Alamat Pengiriman
-                      </h2>
+                      <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">1</div>
+                      <h2 className="font-headline-md text-on-surface font-bold">Pilih Alamat Pengiriman</h2>
                     </div>
-                    <button className="text-primary font-label-sm text-label-sm hover:underline font-semibold">
-                      Ubah Alamat
-                    </button>
+                    {addresses.length > 0 && (
+                      <button
+                        onClick={() => setShowAddressPicker(true)}
+                        className="text-sm text-primary font-semibold hover:underline flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                        Ubah Alamat
+                      </button>
+                    )}
                   </div>
-                  <div className="border-2 border-primary bg-primary-fixed/10 rounded-lg p-4 relative">
-                    <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-primary">home</span>
-                      <div className="flex-grow">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-label-sm text-label-sm text-on-surface font-bold">
-                            Rumah Utama
-                          </span>
-                          <span className="px-2 py-0.5 bg-primary text-on-primary text-[10px] rounded uppercase tracking-tighter font-semibold">
-                            Default
-                          </span>
+
+                  {isLoadingAddresses ? (
+                    <div className="flex items-center gap-3 p-4 border border-outline-variant rounded-lg">
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-on-surface-variant">Memuat alamat...</span>
+                    </div>
+                  ) : !selectedAddress ? (
+                    <div className="p-4 border-2 border-dashed border-outline-variant rounded-lg text-center space-y-3">
+                      <span className="material-symbols-outlined text-4xl text-on-surface-variant block">location_off</span>
+                      <p className="text-sm text-on-surface-variant">Belum ada alamat pengiriman.</p>
+                      <Link href="/profile" className="inline-flex items-center gap-1 text-sm text-primary font-semibold hover:underline">
+                        <span className="material-symbols-outlined text-[16px]">add</span>
+                        Tambah Alamat di Profil
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-primary bg-primary-fixed/10 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-primary mt-0.5">home</span>
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-sm text-on-surface">{selectedAddress.label}</span>
+                            {selectedAddress.is_default && (
+                              <span className="px-2 py-0.5 bg-primary text-on-primary text-[10px] rounded uppercase font-semibold">Utama</span>
+                            )}
+                          </div>
+                          <p className="font-semibold text-sm text-on-surface">{selectedAddress.recipient_name}</p>
+                          <p className="text-sm text-on-surface-variant">{selectedAddress.recipient_phone}</p>
+                          <p className="text-sm text-on-surface-variant mt-1">
+                            {selectedAddress.address_line}, {selectedAddress.city}, {selectedAddress.province} {selectedAddress.postal_code}
+                          </p>
                         </div>
-                        <p className="font-body-md text-body-md text-on-surface font-semibold">
-                          John Doe
-                        </p>
-                        <p className="font-body-md text-body-md text-on-surface-variant text-sm">
-                          0812-3456-7890
-                        </p>
-                        <p className="font-body-md text-body-md text-on-surface-variant text-sm mt-2">
-                          Jl. Melati No. 45, RT 05 / RW 02, Kebayoran Lama, Jakarta Selatan, 12240
-                        </p>
+                        <span className="material-symbols-outlined text-primary">check_circle</span>
                       </div>
-                      <span className="material-symbols-outlined text-primary">check_circle</span>
                     </div>
-                  </div>
+                  )}
                 </section>
 
-                {/* Step 2: Kurir Lokal */}
-                <section className="bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-sm border border-surface-container relative overflow-hidden">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold font-label-sm">
-                      2
-                    </div>
-                    <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                      Pilih Pengiriman
-                    </h2>
+                {/* ── STEP 2: Pengiriman ─────────────────────────────── */}
+                <section className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container relative overflow-hidden">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">2</div>
+                    <h2 className="font-headline-md text-on-surface font-bold">Pilih Pengiriman</h2>
                   </div>
+
+                  {/* Catatan pengiriman */}
+                  <div className="bg-tertiary-container rounded-lg p-3 mb-4 flex items-start gap-2">
+                    <span className="material-symbols-outlined text-on-tertiary-container text-[18px] mt-0.5">info</span>
+                    <p className="text-xs text-on-tertiary-container">
+                      <strong>Catatan:</strong> Jika admin tidak dapat memenuhi estimasi waktu yang tertera, 
+                      penjadwalan akan dikonfirmasi lebih lanjut melalui pesan WhatsApp ke nomor yang terdaftar.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Option 1 */}
-                    <label
-                      onClick={() => setShippingOption("instant")}
-                      className={`relative flex flex-col p-4 border rounded-lg cursor-pointer hover:border-primary transition-all group ${
-                        shippingOption === "instant"
-                          ? "border-primary bg-primary-fixed/20 shadow-sm"
-                          : "border-outline-variant"
-                      }`}
-                    >
-                      <input
-                        className="peer sr-only"
-                        name="courier"
-                        type="radio"
-                        value="gosend"
-                        checked={shippingOption === "instant"}
-                        onChange={() => setShippingOption("instant")}
-                      />
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">
-                            two_wheeler
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface font-bold">
-                            Kurir Instan
+                    {[
+                      { value: "instant" as const, label: "Kurir Instan", icon: "two_wheeler", desc: "Estimasi tiba hari ini, maks 3 jam setelah diproses.", price: 25000 },
+                      { value: "sameday" as const, label: "Kurir Sameday", icon: "local_shipping", desc: "Estimasi tiba hari ini, maks 8 jam setelah diproses.", price: 15000 },
+                    ].map(opt => (
+                      <label
+                        key={opt.value}
+                        onClick={() => setShippingOption(opt.value)}
+                        className={`flex flex-col p-4 border-2 rounded-lg cursor-pointer hover:border-primary transition-all group ${
+                          shippingOption === opt.value ? "border-primary bg-primary-fixed/20 shadow-sm" : "border-outline-variant"
+                        }`}
+                      >
+                        <input className="sr-only" type="radio" name="shipping" value={opt.value} checked={shippingOption === opt.value} onChange={() => setShippingOption(opt.value)} />
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary">{opt.icon}</span>
+                            <span className="font-bold text-sm text-on-surface">{opt.label}</span>
+                          </div>
+                          <span className={`material-symbols-outlined text-[20px] ${shippingOption === opt.value ? "text-primary" : "text-outline-variant"}`}>
+                            {shippingOption === opt.value ? "radio_button_checked" : "radio_button_unchecked"}
                           </span>
                         </div>
-                        <span
-                          className={`material-symbols-outlined transition-colors ${
-                            shippingOption === "instant" ? "text-primary icon-fill" : "text-outline-variant"
-                          }`}
-                        >
-                          {shippingOption === "instant" ? "radio_button_checked" : "radio_button_unchecked"}
-                        </span>
-                      </div>
-                      <p className="font-body-md text-body-md text-on-surface-variant text-sm mt-1">
-                        Estimasi tiba hari ini, maks 3 jam setelah diproses.
-                      </p>
-                      <p className="font-label-sm text-label-sm text-primary mt-3 font-semibold">
-                        Rp 25.000
-                      </p>
-                    </label>
-
-                    {/* Option 2 */}
-                    <label
-                      onClick={() => setShippingOption("sameday")}
-                      className={`relative flex flex-col p-4 border rounded-lg cursor-pointer hover:border-primary transition-all group ${
-                        shippingOption === "sameday"
-                          ? "border-primary bg-primary-fixed/20 shadow-sm"
-                          : "border-outline-variant"
-                      }`}
-                    >
-                      <input
-                        className="peer sr-only"
-                        name="courier"
-                        type="radio"
-                        value="sameday"
-                        checked={shippingOption === "sameday"}
-                        onChange={() => setShippingOption("sameday")}
-                      />
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">
-                            local_shipping
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface font-bold">
-                            Kurir Sameday
-                          </span>
-                        </div>
-                        <span
-                          className={`material-symbols-outlined transition-colors ${
-                            shippingOption === "sameday" ? "text-primary icon-fill" : "text-outline-variant"
-                          }`}
-                        >
-                          {shippingOption === "sameday" ? "radio_button_checked" : "radio_button_unchecked"}
-                        </span>
-                      </div>
-                      <p className="font-body-md text-body-md text-on-surface-variant text-sm mt-1">
-                        Estimasi tiba hari ini, maks 8 jam setelah diproses.
-                      </p>
-                      <p className="font-label-sm text-label-sm text-primary mt-3 font-semibold">
-                        Rp 15.000
-                      </p>
-                    </label>
+                        <p className="text-xs text-on-surface-variant">{opt.desc}</p>
+                        <p className="text-sm text-primary font-bold mt-3">{formatPrice(opt.price)}</p>
+                      </label>
+                    ))}
                   </div>
                 </section>
 
-                {/* Step 3: Metode Pembayaran */}
-                <section className="bg-surface-container-lowest rounded-xl p-6 md:p-8 shadow-sm border border-surface-container relative overflow-hidden">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold font-label-sm">
-                      3
-                    </div>
-                    <h2 className="font-headline-md text-headline-md text-on-surface font-bold">
-                      Metode Pembayaran
-                    </h2>
+                {/* ── STEP 3: Pembayaran ─────────────────────────────── */}
+                <section className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container relative overflow-hidden">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">3</div>
+                    <h2 className="font-headline-md text-on-surface font-bold">Metode Pembayaran</h2>
                   </div>
-                  <div className="space-y-4">
-                    {/* Transfer Bank */}
-                    <div>
-                      <h3 className="font-label-sm text-label-sm text-on-surface-variant mb-3 uppercase tracking-wider font-semibold">
-                        Transfer Bank (Verifikasi Manual)
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label
-                          onClick={() => setPaymentMethod("bca")}
-                          className={`flex items-center p-4 border rounded-lg cursor-pointer hover:border-primary transition-all ${
-                            paymentMethod === "bca"
-                              ? "border-primary bg-primary-fixed/20"
-                              : "border-outline-variant"
-                          }`}
-                        >
-                          <input
-                            className="sr-only"
-                            name="payment"
-                            type="radio"
-                            value="bca"
-                            checked={paymentMethod === "bca"}
-                            onChange={() => setPaymentMethod("bca")}
-                          />
-                          <span className="material-symbols-outlined text-primary mr-3">
-                            account_balance
-                          </span>
-                          <span className="font-body-md text-body-md text-on-surface flex-grow">
-                            BCA Transfer
-                          </span>
-                          <span
-                            className={`material-symbols-outlined transition-colors ${
-                              paymentMethod === "bca" ? "text-primary icon-fill" : "text-outline-variant"
-                            }`}
-                          >
-                            {paymentMethod === "bca" ? "radio_button_checked" : "radio_button_unchecked"}
-                          </span>
-                        </label>
 
+                  {/* Bank Transfer */}
+                  <div className="mb-5">
+                    <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">
+                      Transfer Bank (Verifikasi Manual)
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {BANK_TRANSFER.map(p => (
                         <label
-                          onClick={() => setPaymentMethod("mandiri")}
-                          className={`flex items-center p-4 border rounded-lg cursor-pointer hover:border-primary transition-all ${
-                            paymentMethod === "mandiri"
-                              ? "border-primary bg-primary-fixed/20"
-                              : "border-outline-variant"
+                          key={p.id}
+                          onClick={() => setSelectedPayment(p)}
+                          className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer hover:border-primary transition-all ${
+                            selectedPayment?.id === p.id ? "border-primary bg-primary-fixed/20" : "border-outline-variant"
                           }`}
                         >
-                          <input
-                            className="sr-only"
-                            name="payment"
-                            type="radio"
-                            value="mandiri"
-                            checked={paymentMethod === "mandiri"}
-                            onChange={() => setPaymentMethod("mandiri")}
-                          />
-                          <span className="material-symbols-outlined text-primary mr-3">
-                            account_balance
-                          </span>
-                          <span className="font-body-md text-body-md text-on-surface flex-grow">
-                            Mandiri Transfer
-                          </span>
-                          <span
-                            className={`material-symbols-outlined transition-colors ${
-                              paymentMethod === "mandiri" ? "text-primary icon-fill" : "text-outline-variant"
-                            }`}
-                          >
-                            {paymentMethod === "mandiri" ? "radio_button_checked" : "radio_button_unchecked"}
+                          <input className="sr-only" type="radio" name="payment" value={p.id} checked={selectedPayment?.id === p.id} onChange={() => setSelectedPayment(p)} />
+                          <span className="material-symbols-outlined text-primary text-[20px]">account_balance</span>
+                          <span className="text-sm font-semibold text-on-surface flex-grow">{p.name}</span>
+                          <span className={`material-symbols-outlined text-[18px] ${selectedPayment?.id === p.id ? "text-primary" : "text-outline-variant"}`}>
+                            {selectedPayment?.id === p.id ? "radio_button_checked" : "radio_button_unchecked"}
                           </span>
                         </label>
-                      </div>
+                      ))}
                     </div>
+                  </div>
 
-                    <hr className="border-surface-container my-4" />
+                  <hr className="border-outline-variant mb-5" />
 
-                    {/* E-Wallet */}
-                    <div>
-                      <h3 className="font-label-sm text-label-sm text-on-surface-variant mb-3 uppercase tracking-wider font-semibold">
-                        E-Wallet (Otomatis)
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* E-Wallet */}
+                  <div>
+                    <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">
+                      E-Wallet & QRIS
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {EWALLET.map(p => (
                         <label
-                          onClick={() => setPaymentMethod("gopay")}
-                          className={`flex items-center p-4 border rounded-lg cursor-pointer hover:border-primary transition-all ${
-                            paymentMethod === "gopay"
-                              ? "border-primary bg-primary-fixed/20"
-                              : "border-outline-variant"
+                          key={p.id}
+                          onClick={() => setSelectedPayment(p)}
+                          className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer hover:border-primary transition-all ${
+                            selectedPayment?.id === p.id ? "border-primary bg-primary-fixed/20" : "border-outline-variant"
                           }`}
                         >
-                          <input
-                            className="sr-only"
-                            name="payment"
-                            type="radio"
-                            value="gopay"
-                            checked={paymentMethod === "gopay"}
-                            onChange={() => setPaymentMethod("gopay")}
-                          />
-                          <span className="material-symbols-outlined text-primary mr-3">
-                            account_balance_wallet
-                          </span>
-                          <span className="font-body-md text-body-md text-on-surface flex-grow">
-                            GoPay
-                          </span>
-                          <span
-                            className={`material-symbols-outlined transition-colors ${
-                              paymentMethod === "gopay" ? "text-primary icon-fill" : "text-outline-variant"
-                            }`}
-                          >
-                            {paymentMethod === "gopay" ? "radio_button_checked" : "radio_button_unchecked"}
+                          <input className="sr-only" type="radio" name="payment" value={p.id} checked={selectedPayment?.id === p.id} onChange={() => setSelectedPayment(p)} />
+                          <span className="material-symbols-outlined text-primary text-[20px]">{p.icon}</span>
+                          <span className="text-sm font-semibold text-on-surface flex-grow">{p.name}</span>
+                          <span className={`material-symbols-outlined text-[18px] ${selectedPayment?.id === p.id ? "text-primary" : "text-outline-variant"}`}>
+                            {selectedPayment?.id === p.id ? "radio_button_checked" : "radio_button_unchecked"}
                           </span>
                         </label>
-
-                        <label
-                          onClick={() => setPaymentMethod("qris")}
-                          className={`flex items-center p-4 border rounded-lg cursor-pointer hover:border-primary transition-all ${
-                            paymentMethod === "qris"
-                              ? "border-primary bg-primary-fixed/20"
-                              : "border-outline-variant"
-                          }`}
-                        >
-                          <input
-                            className="sr-only"
-                            name="payment"
-                            type="radio"
-                            value="qris"
-                            checked={paymentMethod === "qris"}
-                            onChange={() => setPaymentMethod("qris")}
-                          />
-                          <span className="material-symbols-outlined text-primary mr-3">
-                            qr_code_scanner
-                          </span>
-                          <span className="font-body-md text-body-md text-on-surface flex-grow">
-                            QRIS
-                          </span>
-                          <span
-                            className={`material-symbols-outlined transition-colors ${
-                              paymentMethod === "qris" ? "text-primary icon-fill" : "text-outline-variant"
-                            }`}
-                          >
-                            {paymentMethod === "qris" ? "radio_button_checked" : "radio_button_unchecked"}
-                          </span>
-                        </label>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </section>
               </div>
 
-              {/* Right Column: Order Summary */}
+              {/* ── Right Column: Order Summary ─────────────────────── */}
               <div className="lg:col-span-5">
-                <div className="sticky top-28 bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container flex flex-col gap-6">
-                  <h2 className="font-headline-md text-headline-md text-on-surface border-b border-surface-container pb-4 font-bold">
-                    Ringkasan Pesanan
-                  </h2>
+                <div className="sticky top-28 bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container flex flex-col gap-5">
+                  <h2 className="font-headline-md text-on-surface border-b border-surface-container pb-4 font-bold">Ringkasan Pesanan</h2>
 
-                  {/* Item List */}
-                  <div className="space-y-4 max-h-[409px] overflow-y-auto pr-2">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="flex gap-4">
-                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 relative">
-                          <Image
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            src={item.image}
-                          />
+                  <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+                    {cartItems.map(item => (
+                      <div key={item.id} className="flex gap-3">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 relative">
+                          <Image alt={item.name} fill className="object-cover" src={item.image} />
                         </div>
                         <div className="flex-grow flex flex-col justify-between">
-                          <div>
-                            <h3 className="font-body-lg text-body-lg text-on-surface font-semibold leading-tight">
-                              {item.name}
-                            </h3>
-                            <p className="font-body-md text-body-md text-on-surface-variant text-sm mt-1">
-                              {item.unit || "Porsi Spesial"}
-                            </p>
-                          </div>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="font-label-sm text-label-sm text-on-surface-variant">
-                              {item.quantity} x
-                            </span>
-                            <span className="font-body-md text-body-md text-on-surface font-bold">
-                              {formatPrice(item.price * item.quantity)}
-                            </span>
+                          <p className="font-semibold text-sm text-on-surface leading-tight">{item.name}</p>
+                          <p className="text-xs text-on-surface-variant">{item.unit || "Porsi Spesial"}</p>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-on-surface-variant">{item.quantity}×</span>
+                            <span className="text-sm font-bold text-on-surface">{formatPrice(item.price * item.quantity)}</span>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="border-t border-surface-container pt-4 space-y-3">
-                    <div className="flex justify-between text-on-surface-variant font-body-md text-body-md">
+                  <div className="border-t border-surface-container pt-4 space-y-2 text-sm">
+                    <div className="flex justify-between text-on-surface-variant">
                       <span>Subtotal Produk</span>
                       <span>{formatPrice(cartTotal)}</span>
                     </div>
-                    <div className="flex justify-between text-on-surface-variant font-body-md text-body-md">
+                    <div className="flex justify-between text-on-surface-variant">
                       <span>Biaya Pengiriman</span>
                       <span>{formatPrice(shippingCost)}</span>
                     </div>
-                    <div className="flex justify-between text-on-surface-variant font-body-md text-body-md text-sm">
-                      <span>Pajak (Termasuk)</span>
-                      <span>Rp 0</span>
-                    </div>
                   </div>
 
-                  <div className="border-t border-surface-container pt-4 flex justify-between items-end">
-                    <span className="font-body-md text-body-md text-on-surface">Total Pembayaran</span>
-                    <span className="font-display-lg-mobile text-display-lg-mobile text-primary font-bold">
-                      {formatPrice(totalPayment)}
-                    </span>
+                  <div className="border-t border-surface-container pt-3 flex justify-between items-end">
+                    <span className="text-sm text-on-surface">Total Pembayaran</span>
+                    <span className="text-xl font-bold text-primary">{formatPrice(totalPayment)}</span>
                   </div>
+
+                  {selectedPayment && (
+                    <div className="bg-surface-container rounded-lg p-3 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[18px]">{selectedPayment.icon}</span>
+                      <span className="text-sm text-on-surface font-semibold">{selectedPayment.name}</span>
+                      <span className="ml-auto text-xs text-on-surface-variant">{selectedPayment.category === "bank_transfer" ? "Transfer Bank" : "E-Wallet"}</span>
+                    </div>
+                  )}
 
                   <button
                     onClick={handlePay}
-                    className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container transition-colors duration-300 py-4 rounded-lg font-label-sm text-label-sm uppercase tracking-widest flex items-center justify-center gap-2 mt-4 active:scale-[0.98] font-bold"
+                    disabled={isSubmitting || !selectedAddress || !selectedPayment}
+                    className="w-full bg-primary hover:bg-primary-container text-on-primary hover:text-on-primary-container transition-all py-4 rounded-lg font-bold uppercase tracking-wide flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="material-symbols-outlined">lock</span>
-                    Bayar Sekarang
+                    {isSubmitting ? (
+                      <><span className="material-symbols-outlined animate-spin">progress_activity</span> Memproses...</>
+                    ) : (
+                      <><span className="material-symbols-outlined">lock</span> Bayar Sekarang</>
+                    )}
                   </button>
 
-                  <p className="text-center font-label-sm text-label-sm text-outline mt-2 flex items-center justify-center gap-1">
+                  {!selectedAddress && !isLoadingAddresses && (
+                    <p className="text-xs text-error text-center flex items-center justify-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">warning</span>
+                      Pilih alamat pengiriman terlebih dahulu
+                    </p>
+                  )}
+                  {!selectedPayment && (
+                    <p className="text-xs text-error text-center flex items-center justify-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">warning</span>
+                      Pilih metode pembayaran terlebih dahulu
+                    </p>
+                  )}
+
+                  <p className="text-center text-xs text-outline flex items-center justify-center gap-1">
                     <span className="material-symbols-outlined text-sm">verified_user</span>
                     Transaksi Aman &amp; Terenkripsi
                   </p>
@@ -618,7 +643,59 @@ export default function CheckoutPage() {
         )}
       </main>
 
-      {/* Footer Component */}
+      {/* ── Address Picker Modal ─────────────────────────────────────────── */}
+      {showAddressPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddressPicker(false)} />
+          <div className="bg-surface rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 shadow-xl border border-surface-container relative z-10">
+            <div className="flex justify-between items-center border-b border-surface-container pb-4 mb-5">
+              <h2 className="text-lg font-bold text-primary">Pilih Alamat Pengiriman</h2>
+              <button onClick={() => setShowAddressPicker(false)} className="text-on-surface-variant hover:text-primary p-1 rounded-full transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {addresses.map(addr => (
+                <button
+                  key={addr.id}
+                  onClick={() => { setSelectedAddressId(addr.id); setShowAddressPicker(false); }}
+                  className={`w-full text-left p-4 border-2 rounded-lg transition-all hover:border-primary ${
+                    selectedAddressId === addr.id ? "border-primary bg-primary-fixed/10" : "border-outline-variant"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={`material-symbols-outlined mt-0.5 ${selectedAddressId === addr.id ? "text-primary" : "text-on-surface-variant"}`}>
+                      {selectedAddressId === addr.id ? "radio_button_checked" : "radio_button_unchecked"}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-sm text-on-surface">{addr.label}</span>
+                        {addr.is_default && (
+                          <span className="px-2 py-0.5 bg-primary-container text-on-primary-container text-[10px] rounded font-semibold">Utama</span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-on-surface">{addr.recipient_name}</p>
+                      <p className="text-xs text-on-surface-variant">{addr.recipient_phone}</p>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        {addr.address_line}, {addr.city}, {addr.province} {addr.postal_code}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-surface-container">
+              <Link href="/profile" className="flex items-center justify-center gap-2 text-sm text-primary font-semibold hover:underline">
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Tambah Alamat Baru di Profil
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );

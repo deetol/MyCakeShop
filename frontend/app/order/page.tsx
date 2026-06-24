@@ -6,6 +6,8 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
+import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
 
 interface OrderItem {
     name: string;
@@ -21,39 +23,6 @@ interface Order {
     items: OrderItem[];
     total: number;
 }
-
-const MOCK_ORDERS: Order[] = [
-    {
-        id: "ORD-2023-8890",
-        date: "12 Okt 2023",
-        status: "Selesai",
-        items: [
-            {
-                name: "Pandan Cheese Roll",
-                quantity: 1,
-                price: 85000,
-                image:
-                    "https://lh3.googleusercontent.com/aida-public/AB6AXuCNydJNw3fbGGBLqF_u5-6Wqxn6hfsTLnyEjG7f9K1yljWKdah1-eLOc1NChrqdssyXE5-DWd6IdzZrT4IAzc_tfYx7P964RTloTR2IjJuWA_IpkLnn6rDWUiXb-nWtSlN2hU74fyz95er73E3z4jIpVA0tUPwZ-Ijd0AIQChH-7F6em_WZb3YthGIR9pNlNxhK6WeqbRmRcjxSMxyzt8SjpVbHDI46oJWvVG1E_zXNLtJgxfFcxZC-FtarCFot63U8WskUmlt_6tol",
-            },
-        ],
-        total: 105000,
-    },
-    {
-        id: "ORD-2023-8942",
-        date: "28 Okt 2023",
-        status: "Dikirim",
-        items: [
-            {
-                name: "Assorted Roti Manis Box",
-                quantity: 2,
-                price: 60000,
-                image:
-                    "https://lh3.googleusercontent.com/aida-public/AB6AXuDcINj5tuAmlS2lsExYQM30x_5fHZtsTdqx12bDougV4yDeaGRcw8vzlzZB7d9qdLX8nnXtR2eP1EhsEfSRURkn5inMswwH9v1w1McvNIpLVl2w1gsN7nxjmwslpLWMI6qxgXoVuBBbRXhVytk9xVzcyO-W-NpH8RAG6oo2wCF282xQGfUc-TbTpFxTfgh-llHM60OhA5W7uDwNqcbroq4WI9Gcc50nnKxUQcFfZGuyVbMBSHbLQUU85gg8ybmxboY-lPGTkQKnR81w",
-            },
-        ],
-        total: 135000,
-    },
-];
 
 const statusConfig: Record<
     Order["status"],
@@ -83,33 +52,99 @@ const statusConfig: Record<
 
 export default function OrdersPage() {
     const router = useRouter();
+    const { user, token, loading: authLoading, logout: authLogout } = useAuth();
     const [mounted, setMounted] = useState(false);
-    const [name, setName] = useState("John Doe");
-    const [email, setEmail] = useState("john@example.com");
-    const [orders] = useState<Order[]>(MOCK_ORDERS);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [isLoadingOrders, setIsLoadingOrders] = useState(true);
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
-        try {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                const userObj = JSON.parse(storedUser);
-                if (userObj.name) setName(userObj.name);
-                if (userObj.email) setEmail(userObj.email);
-            }
-        } catch (e) {
-            console.error("Failed to load user from storage", e);
+        
+        // Check authentication
+        if (!authLoading && !user) {
+            router.push("/login");
+            return;
         }
-    }, []);
+
+        // Fetch orders from API
+        if (user && token) {
+            fetchOrders();
+        }
+    }, [authLoading, user, router, token]);
+
+    const fetchOrders = async () => {
+        setIsLoadingOrders(true);
+        try {
+            const response = await api.get<any>('/orders', token);
+            
+            // Validasi response data
+            let ordersData: any[] = [];
+            
+            if (response.data) {
+                // Check if response.data is array
+                if (Array.isArray(response.data)) {
+                    ordersData = response.data;
+                } 
+                // Check if response has data property that is array
+                else if (response.data.data && Array.isArray(response.data.data)) {
+                    ordersData = response.data.data;
+                }
+                // Check if response has orders property that is array
+                else if (response.data.orders && Array.isArray(response.data.orders)) {
+                    ordersData = response.data.orders;
+                }
+            }
+            
+            // Map API response to Order format
+            const mappedOrders: Order[] = ordersData.map((order: any) => ({
+                id: order.id?.toString() || order.order_id?.toString() || 'N/A',
+                date: order.created_at 
+                    ? new Date(order.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    })
+                    : new Date().toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    }),
+                status: mapOrderStatus(order.status || 'pending'),
+                items: (order.items || order.order_items || []).map((item: any) => ({
+                    name: item.product_name || item.name || 'Produk',
+                    quantity: item.quantity || 1,
+                    price: item.price || item.unit_price || 0,
+                    image: item.product_image || item.image || undefined,
+                })),
+                total: order.total_amount || order.total || order.grand_total || 0,
+            }));
+            
+            setOrders(mappedOrders);
+        } catch (error) {
+            console.error('Failed to fetch orders:', error);
+            // Jika error, set orders kosong (user belum punya order)
+            setOrders([]);
+        } finally {
+            setIsLoadingOrders(false);
+        }
+    };
+
+    // Map backend status to frontend status
+    const mapOrderStatus = (backendStatus: string): Order["status"] => {
+        const statusMap: Record<string, Order["status"]> = {
+            'pending': 'Diproses',
+            'processing': 'Diproses',
+            'shipped': 'Dikirim',
+            'delivered': 'Selesai',
+            'completed': 'Selesai',
+            'cancelled': 'Dibatalkan',
+        };
+        return statusMap[backendStatus] || 'Diproses';
+    };
 
     const handleLogout = () => {
-        try {
-            localStorage.removeItem("user");
-        } catch (e) {
-            console.error(e);
-        }
-        router.push("/login");
+        authLogout();
     };
 
     const formatPrice = (value: number) =>
@@ -127,14 +162,14 @@ export default function OrdersPage() {
             .join("")
             .toUpperCase() || "U";
 
-    if (!mounted) {
+    if (!mounted || authLoading) {
         return (
             <div className="bg-background text-on-background min-h-screen flex flex-col">
                 <Navbar />
                 <main className="flex-grow flex items-center justify-center pt-24 pb-16">
                     <div className="text-center py-12">
                         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-on-surface-variant font-medium">Memuat pesanan...</p>
+                        <p className="text-on-surface-variant font-medium">Memuat halaman...</p>
                     </div>
                 </main>
                 <Footer />
@@ -154,14 +189,14 @@ export default function OrdersPage() {
                     {/* User Info */}
                     <div className="flex items-center space-x-4 mb-8 p-2">
                         <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-lg select-none">
-                            {getInitials(name)}
+                            {getInitials(user?.name || "User")}
                         </div>
                         <div className="min-w-0">
                             <div className="font-headline-md text-body-lg text-on-surface font-bold truncate">
-                                {name}
+                                {user?.name || "User"}
                             </div>
                             <div className="font-body-md text-label-sm text-on-surface-variant truncate">
-                                {email}
+                                {user?.email || ""}
                             </div>
                         </div>
                     </div>
@@ -177,7 +212,7 @@ export default function OrdersPage() {
                         </Link>
 
                         <Link
-                            href="/orders"
+                            href="/order"
                             className="flex items-center space-x-3 p-3 rounded-lg bg-primary-container text-on-primary-container font-semibold transition-colors"
                         >
                             <span
@@ -187,14 +222,6 @@ export default function OrdersPage() {
                                 receipt_long
                             </span>
                             <span className="font-body-md text-body-md">Pesanan Saya</span>
-                        </Link>
-
-                        <Link
-                            href="/profile#addresses"
-                            className="flex items-center space-x-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
-                        >
-                            <span className="material-symbols-outlined">location_on</span>
-                            <span className="font-body-md text-body-md">Alamat</span>
                         </Link>
 
                         <div className="my-4 border-t border-outline-variant" />
@@ -215,20 +242,32 @@ export default function OrdersPage() {
                         Pesanan Saya
                     </h1>
 
-                    {orders.length === 0 ? (
+                    {isLoadingOrders ? (
+                        /* Loading state */
+                        <div className="bg-surface-container-lowest rounded-xl p-12 shadow-sm border border-outline-variant text-center">
+                            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-on-surface-variant font-body-md text-body-md">
+                                Memuat pesanan...
+                            </p>
+                        </div>
+                    ) : orders.length === 0 ? (
                         /* Empty state */
                         <div className="bg-surface-container-lowest rounded-xl p-12 shadow-sm border border-outline-variant text-center">
                             <span className="material-symbols-outlined text-6xl text-on-surface-variant mb-4 block">
-                                receipt_long
+                                shopping_bag
                             </span>
-                            <p className="text-on-surface-variant font-body-md text-body-md">
-                                Kamu belum memiliki pesanan.
+                            <h2 className="text-xl font-bold text-on-surface mb-2">
+                                Belum Ada Pesanan
+                            </h2>
+                            <p className="text-on-surface-variant font-body-md text-body-md mb-6">
+                                Kamu belum memiliki riwayat pesanan. Yuk mulai belanja sekarang!
                             </p>
                             <Link
                                 href="/products"
-                                className="mt-6 inline-block px-6 py-2 rounded-lg bg-primary text-on-primary font-bold hover:opacity-90 transition-opacity"
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-on-primary font-bold hover:shadow-md transition-all"
                             >
-                                Mulai Belanja
+                                <span className="material-symbols-outlined text-[20px]">storefront</span>
+                                <span>Lihat Produk</span>
                             </Link>
                         </div>
                     ) : (

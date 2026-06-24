@@ -19,6 +19,7 @@ type AuthContextType = {
   user: User | null;
   token: string | null;
   loading: boolean;
+  login: (user: User, token: string) => void;
   logout: () => void;
 };
 
@@ -54,6 +55,16 @@ export function AuthProvider({
     setLoading(false);
   }, []);
 
+  const login = (newUser: User, newToken: string) => {
+    // Save to localStorage
+    localStorage.setItem("user", JSON.stringify(newUser));
+    localStorage.setItem("token", newToken);
+    
+    // Update state immediately
+    setUser(newUser);
+    setToken(newToken);
+  };
+
   const logout = async () => {
   const token = localStorage.getItem("token");
 
@@ -87,6 +98,7 @@ export function AuthProvider({
         user,
         token,
         loading,
+        login,
         logout,
       }}
     >

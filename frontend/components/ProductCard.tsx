@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { ProductData } from "@/data/products";
 
 interface ProductCardProps {
@@ -11,6 +13,8 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, setCartOpen } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -23,6 +27,13 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigating to the details page
     e.stopPropagation();
+    
+    // Check if user is authenticated
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    
     addToCart({
       id: product.id,
       name: product.name,

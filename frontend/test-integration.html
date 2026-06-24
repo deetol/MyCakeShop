@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 Integration Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.pass {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.fail {
+            background: #f44336;
+            color: white;
+        }
+        .status.pending {
+            background: #ff9800;
+            color: white;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .test-group {
+            margin: 30px 0;
+        }
+        .test-group h2 {
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 MyCakeShop - Phase 1 Integration Test</h1>
+        
+        <div class="test-section">
+            <h3>📋 Test Overview</h3>
+            <p><strong>Backend:</strong> http://127.0.0.1:8000/api</p>
+            <p><strong>Frontend:</strong> http://localhost:3000</p>
+            <p><strong>Tests:</strong> Login, Register, Profile, Address Management</p>
+            <button onclick="runAllTests()">▶ Run All Tests</button>
+            <button onclick="clearResults()">🗑 Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/api';
+        let testResults = [];
+
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            resultsDiv.appendChild(div);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            testResults = [];
+        }
+
+        async function testLogin() {
+            log('🔐 Testing Login API...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        login: 'customer@test.com',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Login Test PASSED', 'success');
+                    log(`Token: ${data.data.token.substring(0, 20)}...`, 'info');
+                    log(`User: ${data.data.user.name} (${data.data.user.email})`, 'info');
+                    
+                    // Store token for next tests
+                    localStorage.setItem('test_token', data.data.token);
+                    testResults.push({ test: 'Login', status: 'PASS' });
+                    return data.data.token;
+                } else {
+                    log('❌ Login Test FAILED: ' + data.message, 'error');
+                    testResults.push({ test: 'Login', status: 'FAIL' });
+                    return null;
+                }
+            } catch (error) {
+                log('❌ Login Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Login', status: 'FAIL' });
+                return null;
+            }
+        }
+
+        async function testLoginWithPhone() {
+            log('📱 Testing Login with Phone...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        login: '081234567890',
+                        password: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Phone Login Test PASSED', 'success');
+                    testResults.push({ test: 'Phone Login', status: 'PASS' });
+                } else {
+                    log('❌ Phone Login Test FAILED', 'error');
+                    testResults.push({ test: 'Phone Login', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('❌ Phone Login Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Phone Login', status: 'FAIL' });
+            }
+        }
+
+        async function testLoginError() {
+            log('🔒 Testing Login Error Handling...', 'info');
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        login: 'wrong@test.com',
+                        password: 'wrongpassword'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok && !data.success) {
+                    log('✅ Error Handling Test PASSED - Error caught correctly', 'success');
+                    log(`Error message: ${data.message}`, 'info');
+                    testResults.push({ test: 'Error Handling', status: 'PASS' });
+                } else {
+                    log('❌ Error Handling Test FAILED - Should have failed', 'error');
+                    testResults.push({ test: 'Error Handling', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('✅ Error Handling Test PASSED - Network error caught', 'success');
+                testResults.push({ test: 'Error Handling', status: 'PASS' });
+            }
+        }
+
+        async function testRegister() {
+            log('📝 Testing Register API...', 'info');
+            
+            const randomEmail = `test${Date.now()}@example.com`;
+            
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'Test User',
+                        email: randomEmail,
+                        password: 'password123',
+                        password_confirmation: 'password123'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Register Test PASSED', 'success');
+                    log(`New User: ${data.data.user.name} (${data.data.user.email})`, 'info');
+                    testResults.push({ test: 'Register', status: 'PASS' });
+                } else {
+                    log('❌ Register Test FAILED: ' + data.message, 'error');
+                    testResults.push({ test: 'Register', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('❌ Register Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Register', status: 'FAIL' });
+            }
+        }
+
+        async function testProfile(token) {
+            log('👤 Testing Profile API...', 'info');
+            
+            if (!token) {
+                log('❌ No token available. Run login test first.', 'error');
+                testResults.push({ test: 'Profile', status: 'FAIL' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Profile Test PASSED', 'success');
+                    log(`Profile: ${data.data.name} - ${data.data.email || data.data.phone}`, 'info');
+                    testResults.push({ test: 'Profile', status: 'PASS' });
+                } else {
+                    log('❌ Profile Test FAILED: ' + JSON.stringify(data), 'error');
+                    testResults.push({ test: 'Profile', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('❌ Profile Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Profile', status: 'FAIL' });
+            }
+        }
+
+        async function testAddresses(token) {
+            log('📍 Testing Addresses API...', 'info');
+            
+            if (!token) {
+                log('❌ No token available. Run login test first.', 'error');
+                testResults.push({ test: 'Addresses', status: 'FAIL' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/addresses`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Addresses Test PASSED', 'success');
+                    log(`Found ${data.data.length} address(es)`, 'info');
+                    testResults.push({ test: 'Addresses', status: 'PASS' });
+                } else {
+                    log('❌ Addresses Test FAILED: ' + JSON.stringify(data), 'error');
+                    testResults.push({ test: 'Addresses', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('❌ Addresses Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Addresses', status: 'FAIL' });
+            }
+        }
+
+        async function testAddAddress(token) {
+            log('➕ Testing Add Address API...', 'info');
+            
+            if (!token) {
+                log('❌ No token available. Run login test first.', 'error');
+                testResults.push({ test: 'Add Address', status: 'FAIL' });
+                return null;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/addresses`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        label: 'Test Address',
+                        recipient_name: 'Test User',
+                        recipient_phone: '081234567890',
+                        address_line: 'Jl. Test No. 123',
+                        city: 'Jakarta',
+                        province: 'DKI Jakarta',
+                        postal_code: '12345',
+                        is_default: false
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Add Address Test PASSED', 'success');
+                    log(`Address ID: ${data.data.id}`, 'info');
+                    localStorage.setItem('test_address_id', data.data.id);
+                    testResults.push({ test: 'Add Address', status: 'PASS' });
+                    return data.data.id;
+                } else {
+                    log('❌ Add Address Test FAILED: ' + data.message, 'error');
+                    testResults.push({ test: 'Add Address', status: 'FAIL' });
+                    return null;
+                }
+            } catch (error) {
+                log('❌ Add Address Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Add Address', status: 'FAIL' });
+                return null;
+            }
+        }
+
+        async function testDeleteAddress(token, addressId) {
+            log('🗑 Testing Delete Address API...', 'info');
+            
+            if (!token || !addressId) {
+                log('❌ No token or address ID available.', 'error');
+                testResults.push({ test: 'Delete Address', status: 'FAIL' });
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/addresses/${addressId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    log('✅ Delete Address Test PASSED', 'success');
+                    testResults.push({ test: 'Delete Address', status: 'PASS' });
+                } else {
+                    log('❌ Delete Address Test FAILED: ' + JSON.stringify(data), 'error');
+                    testResults.push({ test: 'Delete Address', status: 'FAIL' });
+                }
+            } catch (error) {
+                log('❌ Delete Address Test ERROR: ' + error.message, 'error');
+                testResults.push({ test: 'Delete Address', status: 'FAIL' });
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            log('🚀 Starting Phase 1 Integration Tests...', 'info');
+            log('═'.repeat(50), 'info');
+
+            // Test 1: Login - Get token
+            const token = await testLogin();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Test 2: Login with Phone
+            await testLoginWithPhone();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Test 3: Error Handling
+            await testLoginError();
+            await new Promise(r => setTimeout(r, 500));
+
+            // Test 4: Register
+            await testRegister();
+            await new Promise(r => setTimeout(r, 500));
+
+            if (token) {
+                // Test 5: Profile - Pass token
+                await testProfile(token);
+                await new Promise(r => setTimeout(r, 500));
+
+                // Test 6: Addresses - Pass token
+                await testAddresses(token);
+                await new Promise(r => setTimeout(r, 500));
+
+                // Test 7: Add Address - Pass token
+                const addressId = await testAddAddress(token);
+                await new Promise(r => setTimeout(r, 500));
+
+                // Test 8: Delete Address - Pass token and addressId
+                if (addressId) {
+                    await testDeleteAddress(token, addressId);
+                }
+            }
+
+            // Summary
+            log('═'.repeat(50), 'info');
+            log('📊 Test Summary', 'info');
+            const passed = testResults.filter(r => r.status === 'PASS').length;
+            const total = testResults.length;
+            const percentage = ((passed / total) * 100).toFixed(1);
+            
+            log(`Tests Passed: ${passed}/${total} (${percentage}%)`, 'success');
+            
+            testResults.forEach(result => {
+                const emoji = result.status === 'PASS' ? '✅' : '❌';
+                log(`${emoji} ${result.test}: ${result.status}`, result.status === 'PASS' ? 'success' : 'error');
+            });
+
+            if (passed === total) {
+                log('🎉 ALL TESTS PASSED! Phase 1 integration is working perfectly!', 'success');
+            } else {
+                log('⚠️ Some tests failed. Please check the errors above.', 'error');
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('✨ Phase 1 Integration Test Ready!', 'info');
+            log('Click "Run All Tests" to start testing the API integration.', 'info');
+        });
+    </script>
+</body>
+</html>
