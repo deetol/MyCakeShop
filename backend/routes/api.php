@@ -9,8 +9,10 @@ use App\Http\Controllers\Api\ShippingMethodController;
 use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\Admin\ProductAdminController;
+use App\Http\Controllers\Api\Admin\OrderAdminController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/test', function () {
     return response()->json([
@@ -68,4 +70,23 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::put('/payments/{payment}/confirm', [PaymentController::class, 'confirm']);
     Route::put('/payments/{payment}/reject', [PaymentController::class, 'reject']);
+    
+    // Admin Product Management
+    Route::get('/admin/products', [ProductAdminController::class, 'index']);
+    Route::post('/admin/products', [ProductAdminController::class, 'store']);
+    Route::get('/admin/products/{product}', [ProductAdminController::class, 'show']);
+    Route::put('/admin/products/{product}', [ProductAdminController::class, 'update']);
+    Route::delete('/admin/products/{product}', [ProductAdminController::class, 'destroy']);
+    Route::put('/admin/products/{product}/toggle-status', [ProductAdminController::class, 'toggleStatus']);
+    Route::patch('/admin/products/{product}/stock-price', [ProductAdminController::class, 'updateStockPrice']);
+    Route::post('/admin/products/bulk-stock-price', [ProductAdminController::class, 'bulkUpdateStockPrice']);
+    
+    // Admin Categories
+    Route::get('/admin/categories', [CategoryController::class, 'index']);
+
+    // Admin Order Management
+    Route::get('/admin/orders', [OrderAdminController::class, 'index']);
+    Route::get('/admin/orders/{order}', [OrderAdminController::class, 'show']);
+    Route::patch('/admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
+    Route::patch('/admin/orders/{order}/payment-status', [OrderAdminController::class, 'updatePaymentStatus']);
 });
