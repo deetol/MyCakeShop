@@ -90,6 +90,12 @@ export default function ProfilePage() {
       return;
     }
 
+    // Admin tidak boleh akses halaman profile user
+    if (!authLoading && user && user.role === 'admin') {
+      router.push("/admin");
+      return;
+    }
+
     // Load user data from auth context
     if (user) {
       setName(user.name || "");

@@ -3,18 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useState } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const { cartCount, setCartOpen } = useCart();
+  const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    setIsLoggedIn(!!storedUser);
-  }, [pathname]);
 
   const navLinks = [
     { name: "Beranda", href: "/" },
@@ -71,14 +67,20 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* Profile Button */}
+          {/* Profile Button — redirect berdasarkan role */}
           <Link
-            href={isLoggedIn ? "/profile" : "/login"}
+            href={
+              !user
+                ? "/login"
+                : user.role === "admin"
+                ? "/admin"
+                : "/profile"
+            }
             aria-label="person"
             className="p-2 text-primary dark:text-primary-fixed-dim hover:text-primary-container transition-all active:scale-95 transition-transform"
           >
             <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
-              person
+              {user ? "account_circle" : "person"}
             </span>
           </Link>
 

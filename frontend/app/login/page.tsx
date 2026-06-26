@@ -75,6 +75,15 @@ export default function LoginPage() {
 
   return (
     <div className="bg-background min-h-screen flex items-center justify-center font-body-md text-body-md text-on-background selection:bg-primary-container selection:text-on-primary-container p-margin-mobile md:p-margin-desktop">
+
+      {/* Back to Home button */}
+      <Link
+        href="/"
+        className="fixed top-5 left-5 flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors bg-surface-container-low hover:bg-surface-container border border-outline-variant rounded-full px-4 py-2 text-sm font-semibold z-50 shadow-sm"
+      >
+        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+        Beranda
+      </Link>
       {/* Main Container: Asymmetric Split Layout */}
       <div className="max-w-container-max w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
         
