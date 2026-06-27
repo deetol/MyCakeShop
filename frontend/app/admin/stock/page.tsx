@@ -37,7 +37,7 @@ export default function StockPricePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [filterCategory, setFilterCategory] = useState<number | null>(null);
   const [filterLowStock, setFilterLowStock] = useState(false);
-  const successTimer = useRef<ReturnType<typeof setTimeout>>();
+  const successTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Auth guard
   useEffect(() => {

@@ -74,7 +74,7 @@ export default function AdminOrdersPage() {
   // Inline status change
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Auth guard
   useEffect(() => {
@@ -113,9 +113,6 @@ export default function AdminOrdersPage() {
     try {
       await api.patch(`/admin/orders/${orderId}/status`, { status: newStatus }, token!);
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
-      if (detailOrder?.id === orderId) {
-        setDetailOrder(prev => prev ? { ...prev, status: newStatus } : prev);
-      }
     } catch (e: any) {
       alert(e.message || "Gagal update status");
     } finally {
@@ -126,7 +123,7 @@ export default function AdminOrdersPage() {
   const handleConfirmPayment = async (orderId: number) => {
     setUpdatingId(orderId);
     try {
-      await api.patch(`/admin/orders/${orderId}/confirm-payment`, {}, token!);
+      await api.post(`/admin/orders/${orderId}/confirm-payment`, {}, token!);
       fetchOrders();
     } catch (e: any) {
       alert(e.message || "Gagal konfirmasi pembayaran");

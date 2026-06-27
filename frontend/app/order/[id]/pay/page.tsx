@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +26,7 @@ const EWALLET = [
 
 interface OrderInfo {
   id: number;
+  uuid?: string;
   order_number: string;
   total: number;
   dp_amount: number | null;
@@ -33,6 +35,7 @@ interface OrderInfo {
   payment_status: string;
   payment_method: string | null;
   items: { product_name: string; quantity: number; price: number; subtotal: number }[];
+  payment?: { id: number; status: string; payment_proof: string | null } | null;
 }
 
 export default function PayOrderPage() {
@@ -46,10 +49,46 @@ export default function PayOrderPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [paid, setPaid] = useState(false);
   const [error, setError] = useState("");
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) { router.push("/login"); }
   }, [loading, user, router]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran gambar maksimal adalah 2MB");
+      return;
+    }
+
+    if (!order || !order.payment || !token) {
+      alert("Informasi pembayaran tidak ditemukan");
+      return;
+    }
+
+    setIsUploadingProof(true);
+    const formData = new FormData();
+    formData.append("payment_proof", file);
+
+    try {
+      await api.postFormData<any>(`/payments/${order.payment.id}/upload-proof`, formData, token);
+      alert("Bukti pembayaran berhasil diunggah.");
+      fetchOrder();
+    } catch (e: any) {
+      alert(e.message || "Gagal mengunggah bukti pembayaran.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  function resolveProofUrl(path: string | null | undefined): string {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `http://127.0.0.1:8000/storage/${path}`;
+  }
 
   const fetchOrder = useCallback(async () => {
     if (!token || !orderId) return;
@@ -62,22 +101,46 @@ export default function PayOrderPage() {
         router.push('/order');
         return;
       }
+      
+      const pMethod = o.payment_method?.name || o.payment_method || null;
+      
       setOrder({
         id: o.id,
+        uuid: o.uuid,
         order_number: o.order_number,
         total: o.total,
         dp_amount: o.dp_amount,
         remaining_amount: o.remaining_amount,
         payment_type: o.payment_type || 'full',
         payment_status: o.payment_status,
-        payment_method: o.payment_method?.name || o.payment_method || null,
+        payment_method: pMethod,
         items: (o.items || []).map((i: any) => ({
           product_name: i.product_name,
           quantity: i.quantity,
           price: i.price,
           subtotal: i.subtotal,
         })),
+        payment: o.payment || null,
       });
+
+      // Pre-select payment method if match is found
+      if (pMethod) {
+        const methodName = String(pMethod).toLowerCase();
+        let matched = BANK_TRANSFER.find(p => 
+          methodName.includes(p.id.toLowerCase()) || 
+          methodName.includes(p.name.toLowerCase())
+        );
+        if (!matched) {
+          matched = EWALLET.find(p => 
+            methodName.includes(p.id.toLowerCase()) || 
+            methodName.includes(p.name.toLowerCase())
+          );
+        }
+        if (matched) {
+          setSelectedPayment(matched);
+          setPaid(true); // Skip choosing and go directly to payment instruction screen
+        }
+      }
     } catch {
       router.push('/order');
     } finally {
@@ -115,36 +178,95 @@ export default function PayOrderPage() {
         ) : !order ? null : paid ? (
           /* Success Screen */
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-6 text-center">
-            <div className="w-20 h-20 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-md mx-auto">
-              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>check_circle</span>
+            <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md mx-auto">
+              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>hourglass_empty</span>
             </div>
             <h2 className="text-2xl font-bold text-primary">Instruksi Pembayaran</h2>
             <p className="text-on-surface-variant">
-              Segera transfer sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong> sesuai metode di bawah. Admin akan mengkonfirmasi dalam 1×24 jam.
+              {selectedPayment?.id === 'qris'
+                ? <>Silakan pindai kode QRIS di bawah ini untuk menyelesaikan pembayaran sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>.</>
+                : <>Segera transfer sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong> sesuai metode di bawah. Admin akan mengkonfirmasi dalam 1×24 jam.</>
+              }
             </p>
 
             {/* Payment Detail */}
             <div className="bg-surface-container-low rounded-xl p-5 text-left space-y-3">
               {selectedPayment?.id === 'qris' ? (
-                <div className="flex flex-col items-center py-4">
-                  <span className="material-symbols-outlined text-primary text-8xl">qr_code_scanner</span>
-                  <p className="text-sm font-semibold text-on-surface mt-2">Scan QRIS</p>
-                  <p className="text-xs text-on-surface-variant">Bayar dengan GoPay, OVO, Dana, ShopeePay, dll</p>
+                <div className="flex flex-col items-center text-center space-y-4 py-4">
+                  <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
+                    <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center">
+                      <span className="material-symbols-outlined text-primary text-5xl">qr_code_scanner</span>
+                      <span className="text-[10px] font-bold text-on-surface-variant mt-2">QRIS PEMBAYARAN</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-on-surface-variant italic">Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.</p>
                 </div>
               ) : (
-                <div className="bg-surface border border-outline-variant rounded-lg p-4 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs text-on-surface-variant font-semibold">{selectedPayment?.name}</p>
-                    <p className="font-bold text-primary text-xl">{selectedPayment?.accountNumber}</p>
-                    <p className="text-xs text-on-surface-variant">a.n. {selectedPayment?.accountName}</p>
+                <div className="space-y-4">
+                  <div className="bg-surface border border-outline-variant rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-on-surface-variant font-semibold">{selectedPayment?.name}</p>
+                      <p className="font-bold text-primary text-xl">{selectedPayment?.accountNumber}</p>
+                      <p className="text-xs text-on-surface-variant">a.n. {selectedPayment?.accountName}</p>
+                    </div>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(selectedPayment?.accountNumber || '')}
+                      className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors"
+                      title="Salin"
+                    >
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(selectedPayment?.accountNumber || '')}
-                    className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors"
-                    title="Salin"
-                  >
-                    <span className="material-symbols-outlined text-sm">content_copy</span>
-                  </button>
+
+                  {/* Upload Bukti Pembayaran */}
+                  <div className="bg-surface border border-outline-variant rounded-lg p-4 space-y-3">
+                    <p className="font-bold text-sm text-on-surface">Bukti Pembayaran</p>
+                    
+                    {order.payment?.payment_proof ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary text-xs font-bold">
+                          <span className="material-symbols-outlined text-sm">schedule</span>
+                          Bukti transfer berhasil diunggah (Sedang Diverifikasi)
+                        </div>
+                        <div className="relative w-32 h-32 rounded border border-outline-variant overflow-hidden bg-surface-container">
+                          <Image
+                            src={resolveProofUrl(order.payment.payment_proof)}
+                            alt="Bukti Transfer"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-on-surface-variant">
+                          Silakan unggah foto bukti transfer Anda di sini setelah melakukan pembayaran.
+                        </p>
+                        
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg cursor-pointer hover:bg-primary-container/20 transition-all font-semibold text-xs">
+                            <span className="material-symbols-outlined text-sm">upload_file</span>
+                            Pilih Berkas
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={isUploadingProof}
+                            />
+                          </label>
+                          
+                          {isUploadingProof && (
+                            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              Mengunggah...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="bg-primary text-on-primary rounded-lg p-4 text-center">

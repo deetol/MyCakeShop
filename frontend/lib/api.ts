@@ -36,19 +36,19 @@ export async function apiClient<T>(
 ): Promise<ApiResponse<T>> {
   const { token, ...fetchOptions } = options;
 
-  const headers: HeadersInit = {
-    'Accept': 'application/json',
-    ...fetchOptions.headers,
-  };
+  const headers = new Headers(fetchOptions.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
 
   // Add Content-Type for non-FormData requests
   if (!(fetchOptions.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+    headers.set('Content-Type', 'application/json');
   }
 
   // Add authorization token if provided
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   try {

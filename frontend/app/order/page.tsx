@@ -23,6 +23,7 @@ interface OrderItem {
 
 interface Order {
   id: string;
+  uuid?: string;
   order_number: string;
   date: string;
   status: string;
@@ -44,7 +45,7 @@ interface Order {
   shipping_method: string | null;
   payment_method: string | null;
   notes: string | null;
-  payment: { status: string; amount: number; paid_at?: string } | null;
+  payment: { status: string; amount: number; payment_proof: string | null; paid_at?: string } | null;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -72,6 +73,9 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isCancelling, setIsCancelling] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -79,20 +83,37 @@ export default function OrdersPage() {
     if (authLoading) return;
     if (!user) { router.push("/login"); return; }
     if (!token) return;
-    fetchOrders();
+    fetchOrders(currentPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user, token]);
+  }, [authLoading, user, token, currentPage]);
 
-  const fetchOrders = async () => {
+  const handleCancelOrder = async (uuid: string) => {
+    if (!token) return;
+    if (!confirm("Apakah Anda yakin ingin membatalkan pesanan ini?")) return;
+    
+    setIsCancelling(uuid);
+    try {
+      await api.put(`/orders/${uuid}/cancel`, {}, token);
+      alert("Pesanan berhasil dibatalkan.");
+      fetchOrders(currentPage);
+    } catch (e: any) {
+      alert(e.message || "Gagal membatalkan pesanan.");
+    } finally {
+      setIsCancelling(null);
+    }
+  };
+
+  const fetchOrders = async (page: number = 1) => {
     if (!token) return;
     setIsLoadingOrders(true);
     try {
-      const res = await api.get<any>('/orders', token);
+      const res = await api.get<any>(`/orders?page=${page}`, token);
       const raw = res.data;
       // Handle paginated response from OrderController
-      const list: any[] = raw?.data || raw?.items || (Array.isArray(raw) ? raw : []);
+      const list: any[] = raw?.items || (Array.isArray(raw) ? raw : []);
       const mapped: Order[] = list.map((o: any) => ({
         id: o.id?.toString() || 'N/A',
+        uuid: o.uuid,
         order_number: o.order_number || `#${o.id}`,
         date: o.created_at
           ? new Date(o.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -126,10 +147,15 @@ export default function OrdersPage() {
         payment: o.payment ? {
           status: o.payment.status,
           amount: o.payment.amount,
+          payment_proof: o.payment.payment_proof,
           paid_at: o.payment.paid_at,
         } : null,
       }));
       setOrders(mapped);
+      if (raw?.pagination) {
+        setTotalPages(raw.pagination.last_page || 1);
+        setCurrentPage(raw.pagination.current_page || 1);
+      }
     } catch (e) {
       console.error(e);
       setOrders([]);
@@ -214,7 +240,19 @@ export default function OrdersPage() {
             <div className="space-y-4">
               {orders.map(order => {
                 const sc = ORDER_STATUS[order.status] || ORDER_STATUS.pending;
-                const pc = PAYMENT_STATUS[order.payment_status] || PAYMENT_STATUS.pending;
+                
+                let pc = PAYMENT_STATUS[order.payment_status] || PAYMENT_STATUS.pending;
+                if (order.payment?.payment_proof) {
+                  if (order.payment_status === 'pending') {
+                    if (order.payment_type === 'dp') {
+                      pc = { label: "Menunggu Verifikasi DP", cls: "text-amber-600", icon: "hourglass_empty" };
+                    } else {
+                      pc = { label: "Menunggu Verifikasi Pembayaran", cls: "text-amber-600", icon: "hourglass_empty" };
+                    }
+                  } else if (order.payment_status === 'dp_paid') {
+                    pc = { label: "Menunggu Verifikasi Pelunasan", cls: "text-amber-600", icon: "hourglass_empty" };
+                  }
+                }
 
                 return (
                   <div key={order.id} className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant hover:shadow-md transition-shadow">
@@ -275,37 +313,51 @@ export default function OrdersPage() {
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-                        className="flex items-center gap-2 px-5 py-2 rounded-lg border-2 border-primary text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {selectedOrder?.id === order.id ? "expand_less" : "receipt_long"}
-                        </span>
-                        {selectedOrder?.id === order.id ? "Tutup" : "Lihat Detail"}
-                      </button>
-
-                      {/* Tombol Bayar DP — untuk pesanan yang belum bayar sama sekali */}
-                      {order.payment_status === 'pending' && order.status !== 'cancelled' && (
-                        <Link
-                          href={`/order/${order.id}/pay`}
-                          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity"
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
+                          className="flex items-center gap-2 px-5 py-2 rounded-lg border-2 border-primary text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[18px]">payments</span>
-                          {order.payment_type === 'dp' ? `Bayar DP` : 'Bayar Sekarang'}
-                        </Link>
-                      )}
+                          <span className="material-symbols-outlined text-[18px]">
+                            {selectedOrder?.id === order.id ? "expand_less" : "receipt_long"}
+                          </span>
+                          {selectedOrder?.id === order.id ? "Tutup" : "Lihat Detail"}
+                        </button>
 
-                      {/* Tombol Lunasi — untuk pesanan yang sudah bayar DP */}
-                      {order.payment_status === 'dp_paid' && order.payment_type === 'dp' && (
-                        <Link
-                          href={`/order/${order.id}/pay-remaining`}
-                          className="flex items-center gap-2 px-5 py-2 rounded-lg bg-tertiary text-on-tertiary font-bold text-sm hover:opacity-90 transition-opacity"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">payments</span>
-                          Lunasi Sekarang
-                        </Link>
-                      )}
+                        {/* Tombol Bayar DP — untuk pesanan yang belum bayar sama sekali */}
+                        {order.payment_status === 'pending' && order.status !== 'cancelled' && (
+                          <Link
+                            href={`/order/${order.id}/pay`}
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-opacity"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">payments</span>
+                            {order.payment_type === 'dp' ? `Bayar DP` : 'Bayar Sekarang'}
+                          </Link>
+                        )}
+
+                        {/* Tombol Lunasi — untuk pesanan yang sudah bayar DP */}
+                        {order.payment_status === 'dp_paid' && order.payment_type === 'dp' && (
+                          <Link
+                            href={`/order/${order.id}/pay-remaining`}
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-tertiary text-on-tertiary font-bold text-sm hover:opacity-90 transition-opacity"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">payments</span>
+                            Lunasi Sekarang
+                          </Link>
+                        )}
+
+                        {/* Tombol Batalkan Pesanan */}
+                        {order.status !== 'cancelled' && order.status !== 'completed' && order.status !== 'shipped' && order.payment_status !== 'paid' && order.uuid && (
+                          <button
+                            onClick={() => handleCancelOrder(order.uuid!)}
+                            disabled={isCancelling === order.uuid}
+                            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-error text-on-error font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">cancel</span>
+                            {isCancelling === order.uuid ? "Membatalkan..." : "Batalkan"}
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Detail Panel */}
@@ -373,13 +425,13 @@ export default function OrdersPage() {
 
                           {/* Full payment info */}
                           {order.payment_type === 'full' && (
-                            <div className={`flex justify-between text-xs pt-1 font-semibold ${order.payment_status === 'paid' || order.payment_status === 'success' ? 'text-tertiary' : 'text-on-surface-variant'}`}>
+                            <div className="flex justify-between text-xs pt-1 font-semibold text-on-surface-variant">
                               <span>Status Pembayaran</span>
-                              <span className="flex items-center gap-1">
+                              <span className={`flex items-center gap-1 font-bold ${pc.cls}`}>
                                 <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                                  {PAYMENT_STATUS[order.payment_status]?.icon || 'schedule'}
+                                  {pc.icon}
                                 </span>
-                                {PAYMENT_STATUS[order.payment_status]?.label || '-'}
+                                {pc.label}
                               </span>
                             </div>
                           )}
@@ -397,6 +449,43 @@ export default function OrdersPage() {
                   </div>
                 );
               })}
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-outline-variant">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Halaman Sebelumnya"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-10 h-10 rounded-lg font-bold text-sm transition-all border ${
+                        currentPage === page
+                          ? "bg-primary text-on-primary border-primary shadow-sm"
+                          : "border-outline-variant text-on-surface hover:border-primary hover:text-primary"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg border border-outline-variant hover:border-primary text-on-surface hover:text-primary transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Halaman Selanjutnya"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>

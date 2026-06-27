@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState<CustomerDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!loading && !user) { router.push("/login"); return; }

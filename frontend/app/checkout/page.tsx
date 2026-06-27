@@ -148,7 +148,44 @@ export default function CheckoutPage() {
   // Order state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const [orderNumber, setOrderNumber] = useState<string>("");
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [paymentProof, setPaymentProof] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran gambar maksimal adalah 2MB");
+      return;
+    }
+
+    if (!createdOrder?.payment?.id || !token) {
+      alert("Informasi pembayaran tidak ditemukan");
+      return;
+    }
+
+    setIsUploadingProof(true);
+    const formData = new FormData();
+    formData.append("payment_proof", file);
+
+    try {
+      const res = await api.postFormData<any>(`/payments/${createdOrder.payment.id}/upload-proof`, formData, token);
+      alert("Bukti pembayaran berhasil diunggah.");
+      setPaymentProof(res.data.payment_proof || null);
+    } catch (e: any) {
+      alert(e.message || "Gagal mengunggah bukti pembayaran.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  function resolveProofUrl(path: string | null | undefined): string {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `http://127.0.0.1:8000/storage/${path}`;
+  }
 
   // ── Auth guard ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -272,8 +309,9 @@ export default function CheckoutPage() {
         payment_type: paymentTypeChoice,
       }, token ?? undefined);
 
-      setOrderNumber(res.data?.order_number || res.data?.id?.toString() || "ORD-" + Date.now());
       clearCart();
+      setCreatedOrder(res.data);
+      setPaymentProof(res.data.payment?.payment_proof || null);
       setCheckoutSuccess(true);
     } catch (error) {
       if (error instanceof ValidationError) {
@@ -281,11 +319,7 @@ export default function CheckoutPage() {
       } else if (error instanceof ApiError) {
         alert(error.message);
       } else {
-        // Fallback: still show success
-        console.error('Order API error:', error);
-        setOrderNumber("ORD-" + Date.now());
-        clearCart();
-        setCheckoutSuccess(true);
+        alert("Terjadi kesalahan koneksi saat memproses pesanan.");
       }
     } finally {
       setIsSubmitting(false);
@@ -332,20 +366,23 @@ export default function CheckoutPage() {
       <main className="flex-grow max-w-container-max w-full mx-auto px-margin-mobile md:px-margin-desktop py-8 md:py-12">
 
         {/* ── SUCCESS STATE ─────────────────────────────────────────────── */}
-        {checkoutSuccess ? (
+        {checkoutSuccess && createdOrder ? (
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-8 animate-in fade-in zoom-in-95 duration-300">
             <div className="text-center space-y-3">
-              <div className="w-20 h-20 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-md mx-auto">
-                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>check_circle</span>
+              <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md mx-auto">
+                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>hourglass_empty</span>
               </div>
               <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">Pesanan Diterima!</h1>
-              <p className="text-on-surface-variant text-sm">Nomor Pesanan: <strong className="text-on-surface">#{orderNumber}</strong></p>
+              <p className="text-on-surface-variant text-sm">Nomor Pesanan: <strong className="text-on-surface">#{createdOrder.order_number}</strong></p>
               <p className="text-on-surface-variant text-sm md:text-base">
-                Terima kasih! Segera selesaikan pembayaran DP untuk pesanan Anda diproses.
+                {selectedPayment?.id === "qris"
+                  ? "Terima kasih! Silakan pindai kode QRIS di bawah ini untuk menyelesaikan pembayaran pesanan Anda."
+                  : "Terima kasih! Segera lakukan transfer dan unggah bukti pembayaran agar pesanan Anda dapat diproses."
+                }
               </p>
             </div>
 
-            {/* DP Summary Banner */}
+            {/* Summary Banner */}
             <div className="bg-primary-fixed/30 border border-primary/20 rounded-xl p-5 space-y-3">
               <p className="text-sm font-bold text-primary uppercase tracking-wide text-center flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">payments</span>
@@ -385,7 +422,7 @@ export default function CheckoutPage() {
                 Panduan Pembayaran — {selectedPayment?.name}
               </h2>
 
-              {selectedPayment?.category === "ewallet" && selectedPayment.id === "qris" && (
+              {selectedPayment?.id === "qris" ? (
                 <div className="flex flex-col items-center text-center space-y-4">
                   <p className="font-body-md text-on-surface-variant">
                     Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
@@ -399,56 +436,95 @@ export default function CheckoutPage() {
                   </div>
                   <p className="text-xs text-on-surface-variant italic">Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.</p>
                 </div>
-              )}
-
-              {selectedPayment?.category === "ewallet" && selectedPayment.id !== "qris" && (
-                <div className="space-y-3">
-                  <p className="font-body-md text-on-surface-variant">
-                    Transfer ke {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
-                  </p>
-                  <div className="bg-surface-container p-4 rounded-lg border border-outline-variant flex justify-between items-center">
-                    <div>
-                      <p className="text-xs text-on-surface-variant font-semibold">Nomor {selectedPayment.name}</p>
-                      <p className="font-bold text-primary text-lg">{selectedPayment.accountNumber}</p>
-                      <p className="text-xs text-on-surface-variant">a.n. {selectedPayment.accountName}</p>
-                    </div>
-                    <button onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors" title="Salin">
-                      <span className="material-symbols-outlined text-sm">content_copy</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {selectedPayment?.category === "bank_transfer" && (
+              ) : (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Transfer ke rekening {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
+                    Transfer ke {selectedPayment?.category === "bank_transfer" ? "rekening" : "nomor"} {selectedPayment?.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
                     {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="border border-outline-variant p-4 rounded-lg">
-                      <p className="text-xs text-on-surface-variant font-bold">Nama Bank</p>
-                      <p className="font-bold text-on-surface">{selectedPayment.name}</p>
-                    </div>
-                    <div className="border border-outline-variant p-4 rounded-lg flex justify-between items-center">
-                      <div>
-                        <p className="text-xs text-on-surface-variant font-bold">Nomor Rekening</p>
-                        <p className="font-bold text-primary select-all">{selectedPayment.accountNumber}</p>
+                  
+                  {selectedPayment?.category === "bank_transfer" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="border border-outline-variant p-4 rounded-lg">
+                        <p className="text-xs text-on-surface-variant font-bold">Nama Bank</p>
+                        <p className="font-bold text-on-surface">{selectedPayment.name}</p>
                       </div>
-                      <button onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors">
+                      <div className="border border-outline-variant p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                          <p className="text-xs text-on-surface-variant font-bold">Nomor Rekening</p>
+                          <p className="font-bold text-primary select-all">{selectedPayment.accountNumber}</p>
+                        </div>
+                        <button onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors">
+                          <span className="material-symbols-outlined text-sm">content_copy</span>
+                        </button>
+                      </div>
+                      <div className="border border-outline-variant p-4 rounded-lg md:col-span-2">
+                        <p className="text-xs text-on-surface-variant font-bold">Nama Penerima</p>
+                        <p className="font-bold text-on-surface">{selectedPayment.accountName}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-surface-container p-4 rounded-lg border border-outline-variant flex justify-between items-center text-sm">
+                      <div>
+                        <p className="text-xs text-on-surface-variant font-semibold">Nomor {selectedPayment?.name}</p>
+                        <p className="font-bold text-primary text-lg">{selectedPayment?.accountNumber}</p>
+                        <p className="text-xs text-on-surface-variant">a.n. {selectedPayment?.accountName}</p>
+                      </div>
+                      <button onClick={() => navigator.clipboard.writeText(selectedPayment?.accountNumber || '')} className="text-primary hover:bg-surface-container p-2 rounded-full transition-colors" title="Salin">
                         <span className="material-symbols-outlined text-sm">content_copy</span>
                       </button>
                     </div>
-                    <div className="border border-outline-variant p-4 rounded-lg md:col-span-2">
-                      <p className="text-xs text-on-surface-variant font-bold">Nama Penerima</p>
-                      <p className="font-bold text-on-surface">{selectedPayment.accountName}</p>
-                    </div>
+                  )}
+
+                  {/* Upload Bukti Pembayaran */}
+                  <div className="bg-surface border border-outline-variant rounded-lg p-4 space-y-3">
+                    <p className="font-bold text-sm text-on-surface">Bukti Pembayaran</p>
+                    
+                    {paymentProof ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary text-xs font-bold">
+                          <span className="material-symbols-outlined text-sm">schedule</span>
+                          Bukti transfer berhasil diunggah (Sedang Diverifikasi)
+                        </div>
+                        <div className="relative w-32 h-32 rounded border border-outline-variant overflow-hidden bg-surface-container">
+                          <Image
+                            src={resolveProofUrl(paymentProof)}
+                            alt="Bukti Transfer"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-on-surface-variant">
+                          Silakan unggah foto bukti transfer Anda di sini setelah melakukan pembayaran.
+                        </p>
+                        
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg cursor-pointer hover:bg-primary-container/20 transition-all font-semibold text-xs">
+                            <span className="material-symbols-outlined text-sm">upload_file</span>
+                            Pilih Berkas
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={isUploadingProof}
+                            />
+                          </label>
+                          
+                          {isUploadingProof && (
+                            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              Mengunggah...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button className="w-full bg-primary hover:bg-primary-container text-on-primary rounded-lg py-3 font-label-sm text-label-sm font-bold flex items-center justify-center gap-2 transition-all">
-                    <span className="material-symbols-outlined text-lg">upload_file</span>
-                    Unggah Bukti Transfer
-                  </button>
                 </div>
               )}
             </div>
@@ -462,8 +538,6 @@ export default function CheckoutPage() {
               </Link>
             </div>
           </div>
-
-        /* ── EMPTY CART ─────────────────────────────────────────────── */
         ) : cartItems.length === 0 ? (
           <div className="max-w-md mx-auto text-center py-16 space-y-6">
             <span className="material-symbols-outlined text-outline-variant mx-auto block" style={{ fontSize: "72px" }}>shopping_basket</span>

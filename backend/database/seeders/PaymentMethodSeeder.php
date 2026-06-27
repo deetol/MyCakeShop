@@ -27,6 +27,18 @@ class PaymentMethodSeeder extends Seeder
                 'is_active' => true,
             ],
             [
+                'name' => 'Transfer BNI',
+                'type' => 'bank_transfer',
+                'icon' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Transfer BRI',
+                'type' => 'bank_transfer',
+                'icon' => null,
+                'is_active' => true,
+            ],
+            [
                 'name' => 'GoPay',
                 'type' => 'ewallet',
                 'icon' => null,
@@ -34,6 +46,24 @@ class PaymentMethodSeeder extends Seeder
             ],
             [
                 'name' => 'OVO',
+                'type' => 'ewallet',
+                'icon' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'DANA',
+                'type' => 'ewallet',
+                'icon' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'ShopeePay',
+                'type' => 'ewallet',
+                'icon' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'LinkAja',
                 'type' => 'ewallet',
                 'icon' => null,
                 'is_active' => true,
@@ -47,7 +77,14 @@ class PaymentMethodSeeder extends Seeder
         ];
 
         foreach ($paymentMethods as $method) {
-            PaymentMethod::create($method);
+            PaymentMethod::updateOrCreate(
+                ['name' => $method['name']],
+                [
+                    'type' => $method['type'],
+                    'icon' => $method['icon'],
+                    'is_active' => $method['is_active']
+                ]
+            );
         }
     }
 }

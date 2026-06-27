@@ -44,7 +44,7 @@ interface OrderDetail {
   updated_at: string;
   items: OrderItem[];
   user: { id: number; name: string; email: string; phone?: string } | null;
-  payment: { status: string; amount: number; paid_at?: string } | null;
+  payment: { id: number; status: string; amount: number; payment_proof: string | null; paid_at?: string } | null;
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -123,6 +123,23 @@ export default function OrderDetailPage() {
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (e: any) {
       alert(e.message || "Gagal update status");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!order || isUpdating) return;
+    if (!confirm(`Konfirmasi pembayaran sebesar ${formatPrice(order.payment?.amount || order.total)}?`)) return;
+    
+    setIsUpdating(true);
+    try {
+      await api.post(`/admin/orders/${orderId}/confirm-payment`, {}, token!);
+      setSuccessMsg("Pembayaran berhasil dikonfirmasi!");
+      fetchOrder();
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (e: any) {
+      alert(e.message || "Gagal konfirmasi pembayaran");
     } finally {
       setIsUpdating(false);
     }
@@ -470,7 +487,40 @@ export default function OrderDetailPage() {
                       <span className="font-normal text-on-surface-variant">via {order.payment_method}</span>
                     )}
                   </div>
+
+                  {/* Confirm payment button for admin inside detail page */}
+                  {(order.payment_status === 'pending' || order.payment_status === 'dp_paid') && (
+                    <button
+                      onClick={handleConfirmPayment}
+                      disabled={isUpdating}
+                      className="w-full mt-4 bg-tertiary text-on-tertiary py-2.5 rounded-lg font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      {order.payment_status === 'dp_paid' ? 'Konfirmasi Pelunasan' : 'Konfirmasi Pembayaran'}
+                    </button>
+                  )}
                 </div>
+
+                {/* Bukti Pembayaran */}
+                {order.payment?.payment_proof && (
+                  <div className="mt-4 p-4 bg-surface-container rounded-lg border border-outline-variant space-y-3">
+                    <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Bukti Pembayaran</p>
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border border-outline bg-surface-container-lowest">
+                      <Image
+                        src={`http://127.0.0.1:8000/storage/${order.payment.payment_proof}`}
+                        alt="Bukti Pembayaran"
+                        fill
+                        className="object-contain cursor-pointer"
+                        onClick={() => window.open(`http://127.0.0.1:8000/storage/${order.payment!.payment_proof}`, '_blank')}
+                        title="Klik untuk membuka di tab baru"
+                        unoptimized
+                      />
+                    </div>
+                    <p className="text-xs text-on-surface-variant text-center">
+                      Klik gambar untuk memperbesar (tab baru)
+                    </p>
+                  </div>
+                )}
               </section>
             </div>
           </div>

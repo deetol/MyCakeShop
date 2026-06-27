@@ -53,10 +53,21 @@ class OrderResource extends JsonResource
                 ]);
             }),
             'payment' => $this->whenLoaded('payment', function () {
-                return $this->payment ? [
-                    'status'   => $this->payment->status,
-                    'amount'   => (float) $this->payment->amount,
-                    'paid_at'  => $this->payment->paid_at?->toISOString(),
+                $payment = $this->payment;
+                if ($this->payment_type === 'dp' && $this->payment_status === 'dp_paid') {
+                    $remainingPayment = \App\Models\Payment::where('order_id', $this->id)
+                        ->where('payment_type', 'remaining')
+                        ->first();
+                    if ($remainingPayment) {
+                        $payment = $remainingPayment;
+                    }
+                }
+                return $payment ? [
+                    'id'            => $payment->id,
+                    'status'        => $payment->status,
+                    'amount'        => (float) $payment->amount,
+                    'payment_proof' => $payment->payment_proof,
+                    'paid_at'       => $payment->paid_at?->toISOString(),
                 ] : null;
             }),
 

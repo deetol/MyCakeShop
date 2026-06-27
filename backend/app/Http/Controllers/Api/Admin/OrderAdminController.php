@@ -119,6 +119,16 @@ class OrderAdminController extends Controller
 
     private function formatOrder(Order $order): array
     {
+        $payment = $order->payment;
+        if ($order->payment_type === 'dp' && $order->payment_status === 'dp_paid') {
+            $remainingPayment = \App\Models\Payment::where('order_id', $order->id)
+                ->where('payment_type', 'remaining')
+                ->first();
+            if ($remainingPayment) {
+                $payment = $remainingPayment;
+            }
+        }
+
         return [
             'id'             => $order->id,
             'order_number'   => $order->order_number,
@@ -135,8 +145,10 @@ class OrderAdminController extends Controller
             'user'           => $order->user ? [
                 'id' => $order->user->id, 'name' => $order->user->name, 'email' => $order->user->email,
             ] : null,
-            'payment' => $order->payment ? [
-                'status' => $order->payment->status, 'amount' => $order->payment->amount,
+            'payment' => $payment ? [
+                'status' => $payment->status, 
+                'amount' => $payment->amount,
+                'payment_proof' => $payment->payment_proof,
             ] : null,
         ];
     }

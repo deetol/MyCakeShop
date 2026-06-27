@@ -46,6 +46,7 @@ class PaymentController extends Controller
                 'payment_id' => $existingRemaining->id,
                 'amount'     => $existingRemaining->amount,
                 'status'     => $existingRemaining->status,
+                'payment_proof' => $existingRemaining->payment_proof,
             ], 'Tagihan pelunasan sudah ada');
         }
 

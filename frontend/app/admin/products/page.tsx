@@ -85,7 +85,7 @@ export default function AdminProductsPage() {
   const formatPrice = (v: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(v);
 
-  const searchTimeout = React.useRef<ReturnType<typeof setTimeout>>();
+  const searchTimeout = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const handleSearchChange = (val: string) => {
     setSearch(val);
     setCurrentPage(1);

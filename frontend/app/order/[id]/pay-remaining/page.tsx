@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,7 @@ const EWALLET = [
 
 interface OrderInfo {
   id: number;
+  uuid?: string;
   order_number: string;
   total: number;
   dp_amount: number;
@@ -48,10 +50,48 @@ export default function PayRemainingPage() {
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [paymentDone, setPaymentDone] = useState(false);
   const [error, setError] = useState("");
+  const [remainingPaymentId, setRemainingPaymentId] = useState<number | null>(null);
+  const [remainingPaymentProof, setRemainingPaymentProof] = useState<string | null>(null);
+  const [isUploadingProof, setIsUploadingProof] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) { router.push("/login"); }
   }, [loading, user, router]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran gambar maksimal adalah 2MB");
+      return;
+    }
+
+    if (!remainingPaymentId || !token) {
+      alert("Informasi pembayaran tidak ditemukan");
+      return;
+    }
+
+    setIsUploadingProof(true);
+    const formData = new FormData();
+    formData.append("payment_proof", file);
+
+    try {
+      const res = await api.postFormData<any>(`/payments/${remainingPaymentId}/upload-proof`, formData, token);
+      alert("Bukti pembayaran berhasil diunggah.");
+      setRemainingPaymentProof(res.data.payment_proof || null);
+    } catch (e: any) {
+      alert(e.message || "Gagal mengunggah bukti pembayaran.");
+    } finally {
+      setIsUploadingProof(false);
+    }
+  };
+
+  function resolveProofUrl(path: string | null | undefined): string {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `http://127.0.0.1:8000/storage/${path}`;
+  }
 
   const fetchOrder = useCallback(async () => {
     if (!token || !orderId) return;
@@ -63,20 +103,52 @@ export default function PayRemainingPage() {
         router.push('/order');
         return;
       }
+      
+      const pMethod = o.payment_method?.name || o.payment_method || null;
+      
       setOrder({
         id: o.id,
+        uuid: o.uuid,
         order_number: o.order_number,
         total: o.total,
         dp_amount: o.dp_amount,
         remaining_amount: o.remaining_amount,
         payment_status: o.payment_status,
-        payment_method: o.payment_method?.name || o.payment_method || null,
+        payment_method: pMethod,
         items: (o.items || []).map((i: any) => ({
           product_name: i.product_name,
           quantity: i.quantity,
           price: i.price,
         })),
       });
+
+      // Pre-select payment method if match is found
+      if (pMethod) {
+        const methodName = String(pMethod).toLowerCase();
+        let matched = BANK_TRANSFER.find(p => 
+          methodName.includes(p.id.toLowerCase()) || 
+          methodName.includes(p.name.toLowerCase())
+        );
+        if (!matched) {
+          matched = EWALLET.find(p => 
+            methodName.includes(p.id.toLowerCase()) || 
+            methodName.includes(p.name.toLowerCase())
+          );
+        }
+        if (matched) {
+          setSelectedPayment(matched);
+          
+          // Auto create remaining payment details
+          try {
+            const payRes = await api.post<any>(`/orders/${orderId}/create-remaining-payment`, {}, token);
+            setRemainingPaymentId(payRes.data.payment_id);
+            setRemainingPaymentProof(payRes.data.payment_proof || null);
+            setPaymentDone(true);
+          } catch (err) {
+            console.error("Failed to auto-create remaining payment:", err);
+          }
+        }
+      }
     } catch {
       router.push('/order');
     } finally {
@@ -97,7 +169,9 @@ export default function PayRemainingPage() {
     setIsSubmitting(true);
     try {
       // Create remaining payment record
-      await api.post(`/orders/${orderId}/create-remaining-payment`, {}, token!);
+      const res = await api.post<any>(`/orders/${orderId}/create-remaining-payment`, {}, token!);
+      setRemainingPaymentId(res.data.payment_id);
+      setRemainingPaymentProof(res.data.payment_proof || null);
       setPaymentDone(true);
     } catch (e: any) {
       setError(e.message || "Gagal membuat tagihan pelunasan. Coba lagi.");
@@ -130,8 +204,8 @@ export default function PayRemainingPage() {
         ) : !order ? null : paymentDone ? (
           /* Success */
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-6 text-center">
-            <div className="w-20 h-20 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-md mx-auto">
-              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>check_circle</span>
+            <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md mx-auto">
+              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>hourglass_empty</span>
             </div>
             <h2 className="text-2xl font-bold text-primary">Permintaan Pelunasan Dikirim!</h2>
             <p className="text-on-surface-variant">
@@ -142,18 +216,70 @@ export default function PayRemainingPage() {
             <div className="bg-surface-container-low rounded-xl p-5 text-left space-y-3">
               <p className="font-bold text-sm text-on-surface">Detail Transfer Pelunasan:</p>
               {selectedPayment?.id !== 'qris' && selectedPayment?.accountNumber && (
-                <div className="bg-surface border border-outline-variant rounded-lg p-4 flex justify-between items-center">
-                  <div>
-                    <p className="text-xs text-on-surface-variant font-semibold">{selectedPayment.name}</p>
-                    <p className="font-bold text-primary text-lg">{selectedPayment.accountNumber}</p>
-                    <p className="text-xs text-on-surface-variant">a.n. {selectedPayment.accountName}</p>
+                <div className="space-y-4">
+                  <div className="bg-surface border border-outline-variant rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-xs text-on-surface-variant font-semibold">{selectedPayment.name}</p>
+                      <p className="font-bold text-primary text-lg">{selectedPayment.accountNumber}</p>
+                      <p className="text-xs text-on-surface-variant">a.n. {selectedPayment.accountName}</p>
+                    </div>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber)}
+                      className="text-primary hover:bg-surface-container p-2 rounded-full"
+                    >
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(selectedPayment.accountNumber)}
-                    className="text-primary hover:bg-surface-container p-2 rounded-full"
-                  >
-                    <span className="material-symbols-outlined text-sm">content_copy</span>
-                  </button>
+
+                  {/* Upload Bukti Pembayaran */}
+                  <div className="bg-surface border border-outline-variant rounded-lg p-4 space-y-3">
+                    <p className="font-bold text-sm text-on-surface">Bukti Pelunasan</p>
+                    
+                    {remainingPaymentProof ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-primary text-xs font-bold">
+                          <span className="material-symbols-outlined text-sm">schedule</span>
+                          Bukti pelunasan berhasil diunggah (Sedang Diverifikasi)
+                        </div>
+                        <div className="relative w-32 h-32 rounded border border-outline-variant overflow-hidden bg-surface-container">
+                          <Image
+                            src={resolveProofUrl(remainingPaymentProof)}
+                            alt="Bukti Pelunasan"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-on-surface-variant">
+                          Silakan unggah foto bukti transfer pelunasan Anda di sini setelah melakukan pembayaran.
+                        </p>
+                        
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg cursor-pointer hover:bg-primary-container/20 transition-all font-semibold text-xs">
+                            <span className="material-symbols-outlined text-sm">upload_file</span>
+                            Pilih Berkas
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/jpg"
+                              className="hidden"
+                              onChange={handleFileChange}
+                              disabled={isUploadingProof}
+                            />
+                          </label>
+                          
+                          {isUploadingProof && (
+                            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                              Mengunggah...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {selectedPayment?.id === 'qris' && (
@@ -172,7 +298,7 @@ export default function PayRemainingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Link href="/order" className="bg-primary text-on-primary px-8 py-3 rounded-lg font-bold hover:shadow-md transition-all">
+              <Link href="/order" className="bg-primary text-on-primary px-8 py-3 rounded-lg font-bold hover:shadow-md transition-all text-center">
                 Lihat Pesanan Saya
               </Link>
             </div>
