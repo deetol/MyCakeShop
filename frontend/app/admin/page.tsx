@@ -52,7 +52,7 @@ function SalesChart({ data }: { data: WeeklySales[] }) {
         {[100, 75, 50, 25, 0].map(pct => (
           <div key={pct} className="flex items-center gap-2">
             <span className="text-[10px] text-on-surface-variant w-8 text-right">
-              {pct === 0 ? "0" : `${Math.round(max * pct / 100 / 1000)}K`}
+              {pct === 0 ? "0" : max > 0 ? `${Math.round(max * pct / 100 / 1000)}K` : "0"}
             </span>
             <div className="flex-1 border-t border-outline-variant/30" />
           </div>
@@ -75,7 +75,7 @@ function SalesChart({ data }: { data: WeeklySales[] }) {
                 />
                 {/* Tooltip */}
                 <div className="absolute -top-8 hidden group-hover:flex bg-on-surface text-inverse-on-surface text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-10">
-                  Rp {(d.amount / 1000).toFixed(0)}K
+                  {d.amount > 0 ? `Rp ${(d.amount / 1000).toFixed(0)}K` : 'Rp 0'}
                 </div>
               </div>
               <span className={`text-[10px] font-bold ${isToday ? "text-primary" : "text-on-surface-variant"}`}>
@@ -120,19 +120,21 @@ export default function AdminDashboard() {
     if (!token) return;
     setIsLoading(true);
     try {
-      const [ordersRes, productsRes] = await Promise.allSettled([
-        api.get<any>("/admin/products?per_page=50", token),
-        api.get<any>("/orders?per_page=10", token),
+      // Fetch from correct admin endpoints
+      const [ordersRes, productsRes, usersRes] = await Promise.allSettled([
+        api.get<any>("/admin/orders?per_page=50", token),
+        api.get<any>("/admin/products?per_page=100", token),
+        api.get<any>("/admin/users?per_page=1", token),
       ]);
 
       // ── Products data ──
       let productList: any[] = [];
-      if (ordersRes.status === "fulfilled") {
-        const d = ordersRes.value.data;
+      if (productsRes.status === "fulfilled") {
+        const d = productsRes.value.data;
         productList = Array.isArray(d) ? d : d?.products || d?.data || [];
       }
 
-      const lowStock = productList.filter((p: any) => p.stock <= 10 && p.stock > 0);
+      const lowStock = productList.filter((p: any) => p.stock > 0 && p.stock <= 10);
       const outOfStock = productList.filter((p: any) => p.stock === 0);
 
       setLowStockProducts(
@@ -147,40 +149,55 @@ export default function AdminDashboard() {
 
       // ── Orders data ──
       let orderList: any[] = [];
-      if (productsRes.status === "fulfilled") {
-        const d = productsRes.value.data;
-        orderList = Array.isArray(d) ? d : d?.data || d?.orders || [];
+      if (ordersRes.status === "fulfilled") {
+        const d = ordersRes.value.data;
+        // admin/orders returns paginated { orders: [], pagination: {} }
+        orderList = Array.isArray(d) ? d : d?.orders || d?.data || [];
       }
 
-      const totalRevenue = orderList.reduce(
-        (s: number, o: any) => s + (o.total_amount || o.total || 0), 0
-      );
-      const pending = orderList.filter(
-        (o: any) => o.status === "pending" || o.status === "processing"
-      ).length;
+      // Revenue = sum of orders that are paid (dp_paid or paid)
+      // parseFloat() handles string decimals from API like "24420.00"
+      const totalRevenue = orderList
+        .filter((o: any) => ["dp_paid", "paid"].includes(o.payment_status))
+        .reduce((s: number, o: any) => {
+          if (o.payment_status === "dp_paid") {
+            return s + (parseFloat(o.dp_amount) || 0);
+          }
+          return s + (parseFloat(o.total) || 0);
+        }, 0);
+
+      const pendingOrders = orderList.filter((o: any) => o.status === "pending").length;
+      const processingOrders = orderList.filter((o: any) => o.status === "processing").length;
+
+      // Users count — only from pagination total (actual registered customers)
+      let totalUsers = 0;
+      if (usersRes.status === "fulfilled") {
+        const d = usersRes.value.data;
+        totalUsers = d?.pagination?.total || 0;
+      }
 
       setStats({
         totalRevenue,
-        revenueGrowth: 12,
+        revenueGrowth: 0,
         totalOrders: orderList.length,
-        pendingOrders: pending,
+        pendingOrders: pendingOrders + processingOrders,
         lowStockCount: lowStock.length + outOfStock.length,
         totalProducts: productList.length,
-        totalUsers: 0,
+        totalUsers,
       });
 
-      // ── Recent orders ──
+      // ── Recent orders (5 latest) ──
       setRecentOrders(orderList.slice(0, 5).map((o: any) => ({
         id: o.order_number || o.id?.toString() || "—",
         customer: o.recipient_name || o.user?.name || "Pelanggan",
-        total: o.total_amount || o.total || 0,
+        total: parseFloat(o.total) || 0,
         status: o.status || "pending",
         date: o.created_at
           ? new Date(o.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
           : "—",
       })));
 
-      // ── Simulated weekly chart (use order totals spread across days) ──
+      // ── Weekly sales chart ──
       const days = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
       const dayTotals = days.map((day, i) => ({
         day,
@@ -191,7 +208,7 @@ export default function AdminDashboard() {
             const mapped = d === 0 ? 6 : d - 1;
             return mapped === i;
           })
-          .reduce((s: number, o: any) => s + (o.total_amount || o.total || 0), 0),
+          .reduce((s: number, o: any) => s + (parseFloat(o.total) || 0), 0),
       }));
       setWeeklySales(dayTotals);
 
@@ -242,8 +259,8 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* ── Bento: Stat Cards ──────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      {/* ── Bento: Stat Cards — 4 kolom lurus ──────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
         {/* Total Penjualan */}
         <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/30 flex flex-col justify-between hover:border-primary/50 transition-colors">
           <div className="flex justify-between items-start mb-4">
@@ -262,6 +279,7 @@ export default function AdminDashboard() {
                 {formatPrice(stats.totalRevenue)}
               </h3>
             )}
+            <p className="text-xs text-on-surface-variant mt-1">Dari pembayaran yang dikonfirmasi</p>
           </div>
         </div>
 
@@ -271,10 +289,10 @@ export default function AdminDashboard() {
             <div className="p-3 bg-secondary-container rounded-lg text-secondary">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
             </div>
-            <span className="text-xs text-on-surface-variant px-2 py-1 bg-surface-container rounded-full font-bold">Hari ini</span>
+            <span className="text-xs text-on-surface-variant px-2 py-1 bg-surface-container rounded-full font-bold">Total</span>
           </div>
           <div>
-            <p className="text-xs font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Pesanan Masuk</p>
+            <p className="text-xs font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Total Pesanan</p>
             {isLoading ? <Skeleton cls="h-8 w-24 mt-1" /> : (
               <h3 className="font-display-lg-mobile text-display-lg-mobile text-on-surface">
                 {stats.totalOrders}
@@ -283,8 +301,27 @@ export default function AdminDashboard() {
             )}
             {stats.pendingOrders > 0 && !isLoading && (
               <p className="text-xs text-amber-600 font-semibold mt-1">
-                {stats.pendingOrders} menunggu konfirmasi
+                {stats.pendingOrders} perlu diproses
               </p>
+            )}
+          </div>
+        </div>
+
+        {/* Pelanggan */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-outline-variant/30 flex flex-col justify-between hover:border-primary/50 transition-colors">
+          <div className="flex justify-between items-start mb-4">
+            <div className="p-3 bg-primary-fixed rounded-lg text-primary">
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>group</span>
+            </div>
+            <Link href="/admin/users" className="text-xs text-primary font-bold hover:underline">Lihat →</Link>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-on-surface-variant mb-1 uppercase tracking-wider">Total Pelanggan</p>
+            {isLoading ? <Skeleton cls="h-8 w-20 mt-1" /> : (
+              <h3 className="font-display-lg-mobile text-display-lg-mobile text-on-surface">
+                {stats.totalUsers}
+                <span className="text-sm text-on-surface-variant ml-2 font-normal">akun</span>
+              </h3>
             )}
           </div>
         </div>

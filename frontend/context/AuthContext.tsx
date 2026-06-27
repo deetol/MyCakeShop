@@ -41,18 +41,23 @@ export function AuthProvider({
     useState(true);
 
   useEffect(() => {
-    const storedUser =
-      localStorage.getItem("user");
-
-    const storedToken =
-      localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
 
     if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
+      try {
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken);
+      } catch {
+        // Invalid JSON, clear storage
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      }
     }
 
-    setLoading(false);
+    // Small delay to ensure state updates are applied before loading = false
+    // This prevents race condition where loading=false but token=null
+    setTimeout(() => setLoading(false), 0);
   }, []);
 
   const login = (newUser: User, newToken: string) => {

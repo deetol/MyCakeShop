@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { ProductData } from "@/data/products";
+import { FrontendProduct } from "@/lib/products";
 
 interface ProductCardProps {
-  product: ProductData;
+  product: FrontendProduct;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
@@ -39,7 +39,9 @@ export default function ProductCard({ product }: ProductCardProps) {
       name: product.name,
       price: product.price,
       image: product.image,
-      unit: product.unit,
+      unit: product.unit || undefined,
+      stock: product.stock,
+      productId: product.numericId,
     });
     // Open cart drawer immediately for dynamic feedback
     setCartOpen(true);
@@ -62,7 +64,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Link href={`/products/${product.id}`} className="block group">
+    <Link href={`/products/${product.slug}`} className="block group">
       <article className="bg-surface-container-lowest rounded-xl overflow-hidden card-hover flex flex-col border border-surface-container-low relative h-full cursor-pointer">
         {/* Tag Badge */}
         {product.tag && (
@@ -83,6 +85,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             fill
             className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            unoptimized
           />
         </div>
 

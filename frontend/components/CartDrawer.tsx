@@ -148,12 +148,19 @@ export default function CartDrawer() {
                   >
                     {/* Item Image */}
                     <div className="relative w-20 h-20 bg-surface-container rounded-lg overflow-hidden flex-shrink-0">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                      />
+                      {item.image && item.image !== '/placeholder-cake.svg' ? (
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-on-surface-variant text-3xl">cake</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Item Details */}
@@ -187,11 +194,20 @@ export default function CartDrawer() {
                           </span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                            disabled={item.stock !== undefined && item.quantity >= item.stock}
+                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={item.stock !== undefined && item.quantity >= item.stock ? `Stok maksimal: ${item.stock}` : 'Tambah'}
                           >
                             +
                           </button>
                         </div>
+
+                        {/* Stock warning */}
+                        {item.stock !== undefined && item.quantity >= item.stock && (
+                          <span className="text-[10px] text-error font-semibold">
+                            Maks {item.stock}
+                          </span>
+                        )}
 
                         {/* Remove Button */}
                         <button

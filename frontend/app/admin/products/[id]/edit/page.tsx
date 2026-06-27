@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -28,6 +28,7 @@ export default function EditProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -42,6 +43,7 @@ export default function EditProductPage() {
   const [mainImage, setMainImage] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [imagePreviewError, setImagePreviewError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auth guard
   useEffect(() => {
@@ -117,6 +119,23 @@ export default function EditProductPage() {
       else setError("Gagal menyimpan perubahan. Coba lagi.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadImage = async (file: File) => {
+    setIsUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await api.postFormData<any>("/admin/products/upload-image", formData, token!);
+      setMainImage(res.data.url);
+      setImagePreviewError(false);
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError("Gagal upload gambar. Coba lagi.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -343,37 +362,65 @@ export default function EditProductPage() {
                   <label className="block text-xs font-bold text-on-surface-variant mb-3">
                     Foto Produk
                   </label>
-                  <div className="relative rounded-lg overflow-hidden border border-outline-variant/30 aspect-square mb-3 bg-surface-container group">
-                    {mainImage && !imagePreviewError ? (
-                      <Image
-                        src={mainImage}
-                        alt={name}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                        onError={() => setImagePreviewError(true)}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant">
-                        <span className="material-symbols-outlined text-5xl mb-2">image</span>
-                        <p className="text-xs">Belum ada gambar</p>
+
+                  {/* Drop zone / preview */}
+                  <div
+                    className="relative rounded-lg overflow-hidden border-2 border-dashed border-outline-variant aspect-square mb-3 bg-surface-container group cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files[0];
+                      if (file) handleUploadImage(file);
+                    }}
+                  >
+                    {isUploading ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2">
+                        <span className="material-symbols-outlined animate-spin text-primary text-[36px]">progress_activity</span>
+                        <p className="text-xs text-on-surface-variant">Mengupload...</p>
                       </div>
-                    )}
-                    {mainImage && !imagePreviewError && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                    ) : mainImage && !imagePreviewError ? (
+                      <>
+                        <Image
+                          src={mainImage}
+                          alt={name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                          onError={() => setImagePreviewError(true)}
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-5xl">cloud_upload</span>
+                        <p className="text-xs font-semibold">Klik atau seret foto</p>
+                        <p className="text-xs">JPG, PNG, WebP · 5MB</p>
                       </div>
                     )}
                   </div>
 
-                  {/* URL Input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadImage(file);
+                    }}
+                  />
+
+                  {/* URL Input fallback */}
                   <div className="bg-surface-container-low border border-outline-variant/50 rounded-lg p-3 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all mb-3">
                     <input
                       type="text"
                       value={mainImage}
                       onChange={e => { setMainImage(e.target.value); setImagePreviewError(false); }}
                       className="w-full bg-transparent border-none p-0 focus:ring-0 text-xs text-on-surface"
-                      placeholder="https://... (URL gambar)"
+                      placeholder="Atau tempel URL gambar..."
                     />
                   </div>
                 </div>

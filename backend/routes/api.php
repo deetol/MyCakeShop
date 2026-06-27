@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\Admin\ProductAdminController;
 use App\Http\Controllers\Api\Admin\OrderAdminController;
+use App\Http\Controllers\Api\Admin\UserAdminController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/test', function () {
@@ -64,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Payment routes (customer)
     Route::post('/payments/{payment}/upload-proof', [PaymentController::class, 'uploadProof']);
+    Route::post('/orders/{order}/create-remaining-payment', [PaymentController::class, 'createRemainingPayment']);
 });
 
 // Admin only routes
@@ -72,6 +74,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::put('/payments/{payment}/reject', [PaymentController::class, 'reject']);
     
     // Admin Product Management
+    Route::post('/admin/products/upload-image', [ProductAdminController::class, 'uploadImage']);
     Route::get('/admin/products', [ProductAdminController::class, 'index']);
     Route::post('/admin/products', [ProductAdminController::class, 'store']);
     Route::get('/admin/products/{product}', [ProductAdminController::class, 'show']);
@@ -88,5 +91,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/admin/orders', [OrderAdminController::class, 'index']);
     Route::get('/admin/orders/{order}', [OrderAdminController::class, 'show']);
     Route::patch('/admin/orders/{order}/status', [OrderAdminController::class, 'updateStatus']);
-    Route::patch('/admin/orders/{order}/payment-status', [OrderAdminController::class, 'updatePaymentStatus']);
+    Route::post('/admin/orders/{order}/confirm-payment', [OrderAdminController::class, 'confirmPayment']);
+
+    // Admin User/Customer Management
+    Route::get('/admin/users', [UserAdminController::class, 'index']);
+    Route::get('/admin/users/{user}', [UserAdminController::class, 'show']);
 });

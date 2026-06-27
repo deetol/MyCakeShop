@@ -7,12 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Payment extends Model
 {
     protected $fillable = [
-        'order_id',
-        'payment_method_id',
-        'amount',
-        'status',
-        'payment_proof',
-        'paid_at',
+        'order_id', 'payment_method_id',
+        'amount', 'payment_type',
+        'status', 'payment_proof', 'paid_at',
     ];
 
     protected $casts = [
@@ -36,37 +33,38 @@ class Payment extends Model
     }
 
     /**
-     * Handle payment confirmed - update order dan decrement stock
+     * Handle payment confirmed - update order status only
+     * Stock already decremented when order was placed
      */
     protected function handlePaymentConfirmed()
     {
         $order = $this->order;
-        
         if (!$order) return;
 
-        // Update order payment_status
-        $order->update([
-            'payment_status' => 'paid',
-            'status' => 'processing', // Auto change status to processing
-        ]);
+        if ($this->payment_type === 'dp') {
+            $order->update([
+                'payment_status' => 'dp_paid',
+                'status' => 'processing',
+            ]);
+        } else {
+            // full payment or remaining payment
+            $order->update([
+                'payment_status' => 'paid',
+                'status' => 'processing',
+            ]);
+        }
+    }
 
-        // Decrement stock for each order item
+    /**
+     * Restore stock when order is cancelled
+     */
+    public static function restoreStockForOrder($order)
+    {
         foreach ($order->items as $item) {
-            $product = $item->product;
-            
-            if ($product) {
-                $newStock = $product->stock - $item->quantity;
-                
-                if ($newStock < 0) {
-                    throw new \Exception("Insufficient stock for product: {$product->name}");
-                }
-                
-                $product->update(['stock' => $newStock]);
+            if ($item->product) {
+                $item->product->increment('stock', $item->quantity);
             }
         }
-
-        // Set paid_at timestamp
-        $this->paid_at = now();
     }
 
     /**

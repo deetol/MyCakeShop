@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { api, ApiError, ValidationError } from "@/lib/api";
 
 interface Category { id: number; name: string; }
@@ -34,13 +35,33 @@ export default function ProductFormModal({ product, categories, token, onClose, 
   const [mainImage, setMainImage] = useState(product?.main_image || "");
   const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Prevent background scroll
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
   }, []);
+
+  // Handle file upload to backend
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setIsUploading(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await api.postFormData<any>("/admin/products/upload-image", formData, token);
+      setMainImage(res.data.url);
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError("Gagal upload gambar. Coba lagi.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,20 +220,73 @@ export default function ProductFormModal({ product, categories, token, onClose, 
 
           {/* Gambar URL */}
           <div>
-            <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">URL Gambar</label>
+            <label className="block text-xs font-bold text-on-surface uppercase tracking-wider mb-1.5">Foto Produk</label>
+            
+            {/* Upload area */}
+            <div
+              className="border-2 border-dashed border-outline-variant rounded-xl p-4 text-center cursor-pointer hover:border-primary transition-colors bg-surface-container-low"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={e => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file) handleFileUpload(file);
+              }}
+            >
+              {isUploading ? (
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <span className="material-symbols-outlined animate-spin text-primary text-[32px]">progress_activity</span>
+                  <p className="text-xs text-on-surface-variant">Mengupload foto...</p>
+                </div>
+              ) : mainImage ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant relative flex-shrink-0">
+                    <Image src={mainImage} alt="Preview" fill className="object-cover" unoptimized />
+                  </div>
+                  <div className="text-left flex-grow">
+                    <p className="text-sm font-semibold text-on-surface">Foto terpilih</p>
+                    <p className="text-xs text-on-surface-variant mt-1 break-all line-clamp-2">{mainImage}</p>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                      className="mt-2 text-xs text-primary font-bold hover:underline"
+                    >
+                      Ganti foto
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-2">
+                  <span className="material-symbols-outlined text-on-surface-variant text-[36px]">cloud_upload</span>
+                  <p className="text-sm font-semibold text-on-surface">Klik atau seret foto ke sini</p>
+                  <p className="text-xs text-on-surface-variant">JPG, PNG, WebP · Maks. 5MB</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Hidden file input */}
             <input
-              type="text"
-              value={mainImage}
-              onChange={e => setMainImage(e.target.value)}
-              className="w-full px-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="https://..."
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/jpg,image/webp"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
             />
-            {mainImage && (
-              <div className="mt-2 w-24 h-24 rounded-lg overflow-hidden border border-outline-variant relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={mainImage} alt="Preview" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
-              </div>
-            )}
+
+            {/* OR URL input */}
+            <div className="mt-3">
+              <p className="text-xs text-on-surface-variant mb-1.5">Atau masukkan URL gambar:</p>
+              <input
+                type="text"
+                value={mainImage}
+                onChange={e => setMainImage(e.target.value)}
+                className="w-full px-3 py-2 border border-outline-variant bg-surface-container-low rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="https://..."
+              />
+            </div>
           </div>
 
           {/* Status */}

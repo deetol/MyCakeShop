@@ -34,6 +34,9 @@ interface OrderDetail {
   shipping_cost: number;
   tax: number;
   total: number;
+  dp_amount?: number;
+  remaining_amount?: number;
+  payment_type?: string;
   notes: string | null;
   shipping_method: string | null;
   payment_method: string | null;
@@ -55,11 +58,12 @@ const STATUS_CFG: Record<string, { label: string; icon: string; cls: string; dot
 };
 
 const PAYMENT_CFG: Record<string, { label: string; icon: string; cls: string }> = {
-  pending:  { label: "Menunggu Pembayaran", icon: "schedule",   cls: "text-on-surface-variant" },
-  paid:     { label: "Lunas",              icon: "verified",    cls: "text-tertiary" },
-  success:  { label: "Lunas",              icon: "verified",    cls: "text-tertiary" },
-  failed:   { label: "Pembayaran Gagal",   icon: "error",       cls: "text-error" },
-  refunded: { label: "Dikembalikan",       icon: "currency_exchange", cls: "text-secondary" },
+  pending:  { label: "Menunggu Pembayaran", icon: "schedule",        cls: "text-on-surface-variant" },
+  dp_paid:  { label: "DP Sudah Dibayar",    icon: "payments",        cls: "text-primary" },
+  paid:     { label: "Lunas",               icon: "verified",        cls: "text-tertiary" },
+  success:  { label: "Lunas",               icon: "verified",        cls: "text-tertiary" },
+  failed:   { label: "Pembayaran Gagal",    icon: "error",           cls: "text-error" },
+  refunded: { label: "Dikembalikan",        icon: "currency_exchange", cls: "text-secondary" },
 };
 
 const ORDER_STATUS_OPTIONS = ["pending", "processing", "shipped", "completed", "cancelled"];
@@ -434,11 +438,23 @@ export default function OrderDetailPage() {
                     <span>Pajak (11%)</span>
                     <span>{formatPrice(order.tax)}</span>
                   </div>
-                  <div className="pt-4 border-t border-outline-variant">
+                  <div className="pt-3 border-t border-outline-variant space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-base text-on-surface">Total</span>
                       <span className="text-xl font-bold text-primary">{formatPrice(order.total)}</span>
                     </div>
+                    {order.dp_amount && order.payment_type === 'dp' && (
+                      <>
+                        <div className="flex justify-between text-sm bg-primary-fixed/20 rounded-lg px-3 py-2">
+                          <span className="font-bold text-primary">DP 50% (sudah/harus bayar)</span>
+                          <span className="font-bold text-primary">{formatPrice(order.dp_amount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-on-surface-variant">
+                          <span>Sisa pembayaran</span>
+                          <span className="font-semibold">{formatPrice(order.remaining_amount || 0)}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

@@ -34,6 +34,9 @@ class OrderDetailResource extends JsonResource
             'shipping_cost' => $this->shipping_cost,
             'tax' => $this->tax,
             'total' => $this->total,
+            'dp_amount' => $this->dp_amount,
+            'remaining_amount' => $this->remaining_amount,
+            'payment_type' => $this->payment_type,
             'notes' => $this->notes,
             
             // Relationships

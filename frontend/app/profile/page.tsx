@@ -59,7 +59,7 @@ export default function ProfilePage() {
     if (!token) return;
 
     try {
-      const response = await api.get<any[]>('/addresses', token);
+      const response = await api.get<any[]>('/addresses', token ?? undefined);
       
       // Map backend addresses to frontend format
       const mappedAddresses: Address[] = response.data.map((addr: any) => ({
@@ -67,7 +67,7 @@ export default function ProfilePage() {
         label: addr.label || 'Alamat',
         isDefault: addr.is_default || false,
         name: addr.recipient_name,
-        phone: addr.recipient_phone,
+        phone: addr.phone,
         line: addr.address_line,
         city: addr.city,
         province: addr.province,
@@ -115,7 +115,7 @@ export default function ProfilePage() {
         name: name,
         phone: phone,
         // Note: email is read-only in backend
-      }, token);
+      }, token ?? undefined);
 
       // Update AuthContext with new user data
       updateAuth(response.data.user, token!);
@@ -136,23 +136,37 @@ export default function ProfilePage() {
     authLogout();
   };
 
+  // Normalize any phone format to digits only (without leading 0 or country code)
+  const normalizePhone = (raw: string | null | undefined): string => {
+    if (!raw) return '';
+    // Remove all non-digit characters first
+    let digits = raw.replace(/\D/g, '');
+    // Remove leading 62 (Indonesia country code)
+    if (digits.startsWith('62')) digits = digits.slice(2);
+    // Remove leading 0
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    return digits;
+  };
+
   const handleOpenAddressModal = (address?: Address) => {
     if (address) {
       setModalAddressId(address.id);
       setModalLabel(address.label);
       setModalName(address.name);
-      setModalPhone(address.phone.startsWith('+62') ? address.phone : '+62' + address.phone.replace(/^0/, ''));
+      // Selalu gunakan nomor telepon dari profil user
+      setModalPhone(normalizePhone(phone) ? '+62' + normalizePhone(phone) : '+62' + normalizePhone(address.phone));
       setModalLine(address.line);
       setModalCity(address.city);
       setModalProvince(address.province);
       setModalPostalCode(address.postalCode);
-      setModalDetailAddress(""); // Reset detail address for editing
+      setModalDetailAddress("");
       setModalIsDefault(address.isDefault);
     } else {
       setModalAddressId(null);
       setModalLabel("Rumah");
       setModalName(name);
-      setModalPhone(phone.startsWith('+62') ? phone : '+62' + phone.replace(/^0/, ''));
+      // Selalu gunakan nomor dari profil user
+      setModalPhone(normalizePhone(phone) ? '+62' + normalizePhone(phone) : '');
       setModalLine("");
       setModalCity("");
       setModalProvince("");
@@ -166,14 +180,27 @@ export default function ProfilePage() {
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Custom validation untuk nomor telepon
-    const phoneDigits = modalPhone.replace(/^\+62/, '');
-    if (!phoneDigits || phoneDigits.length < 9) {
-      alert('Nomor telepon minimal 9 digit (contoh: 81234567890)');
+    // Validasi field wajib
+    if (!modalName.trim() || modalName.trim().length < 3) {
+      alert('Nama penerima harus diisi (minimal 3 karakter)');
       return;
     }
 
-    // Validasi kode pos
+    if (!modalLine.trim() || modalLine.trim().length < 5) {
+      alert('Alamat lengkap harus diisi');
+      return;
+    }
+
+    if (!modalCity.trim()) {
+      alert('Kota harus diisi');
+      return;
+    }
+
+    if (!modalProvince.trim()) {
+      alert('Provinsi harus diisi');
+      return;
+    }
+
     if (!modalPostalCode || modalPostalCode.length !== 5) {
       alert('Kode pos harus 5 digit');
       return;
@@ -183,7 +210,7 @@ export default function ProfilePage() {
       const addressData = {
         label: modalLabel,
         recipient_name: modalName,
-        recipient_phone: modalPhone,
+        phone: modalPhone || phone || '-',
         address_line: modalLine,
         city: modalCity,
         province: modalProvince,
@@ -192,14 +219,11 @@ export default function ProfilePage() {
       };
 
       if (modalAddressId) {
-        // Edit existing address
-        await api.put(`/addresses/${modalAddressId}`, addressData, token);
+        await api.put(`/addresses/${modalAddressId}`, addressData, token ?? undefined);
       } else {
-        // Add new address
-        await api.post('/addresses', addressData, token);
+        await api.post('/addresses', addressData, token ?? undefined);
       }
 
-      // Refresh addresses from backend
       await fetchAddresses();
       setShowAddressModal(false);
     } catch (error) {
@@ -221,7 +245,7 @@ export default function ProfilePage() {
     }
 
     try {
-      await api.delete(`/addresses/${id}`, token);
+      await api.delete(`/addresses/${id}`, token ?? undefined);
       // Refresh addresses from backend
       await fetchAddresses();
     } catch (error) {
@@ -511,51 +535,29 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Nomor Telepon dengan +62 */}
+              {/* Nomor Telepon — read-only dari profil */}
               <div>
                 <label className="block text-sm font-semibold text-on-surface mb-2">
-                  Nomor Telepon <span className="text-error">*</span>
+                  Nomor Telepon
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">
                     call
                   </span>
-                  <div className="absolute left-11 top-1/2 -translate-y-1/2 text-on-surface font-medium text-sm select-none pointer-events-none">
-                    +62
+                  <div className="w-full pl-11 pr-4 py-3 border border-outline-variant/50 bg-surface-container rounded-lg text-sm text-on-surface select-none cursor-not-allowed opacity-75">
+                    {modalPhone || '+62 —'}
                   </div>
-                  <input
-                    type="text"
-                    inputMode="tel"
-                    className="w-full pl-[76px] pr-4 py-3 border border-outline-variant bg-surface-container-low rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    value={modalPhone.replace(/^\+62/, '')}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '');
-                      if (value.length <= 13) {
-                        setModalPhone('+62' + value);
-                      }
-                    }}
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      const input = e.target as HTMLInputElement;
-                      const value = modalPhone.replace(/^\+62/, '');
-                      if (!value) {
-                        input.setCustomValidity('Nomor telepon harus diisi');
-                      } else if (value.length < 9) {
-                        input.setCustomValidity('Nomor telepon minimal 9 digit (contoh: 81234567890)');
-                      } else {
-                        input.setCustomValidity('');
-                      }
-                    }}
-                    onInput={(e) => {
-                      const input = e.target as HTMLInputElement;
-                      input.setCustomValidity('');
-                    }}
-                    placeholder="81234567890"
-                    required
-                  />
                 </div>
-                <p className="text-xs text-on-surface-variant mt-1 ml-1">
-                  Nomor aktif untuk dihubungi kurir (minimal 9 digit, tanpa 0 di depan)
+                <p className="text-xs text-on-surface-variant mt-1 ml-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">lock</span>
+                  Nomor dari profil Anda. Ubah di{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(false)}
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    Informasi Profil
+                  </button>
                 </p>
               </div>
 
@@ -655,9 +657,7 @@ export default function ProfilePage() {
                     value={modalLine}
                     onChange={(e) => setModalLine(e.target.value)}
                     placeholder="Masukkan alamat lengkap&#10;Contoh: Jl. Sudirman No. 123, RT 01/RW 05, Kelurahan Senayan, Kebayoran Baru"
-                    required
                     rows={3}
-                    minLength={10}
                   />
                 </div>
                 
@@ -679,8 +679,6 @@ export default function ProfilePage() {
                     value={modalCity}
                     onChange={(e) => setModalCity(e.target.value)}
                     placeholder="Jakarta Selatan"
-                    required
-                    minLength={3}
                   />
                 </div>
                 <div>
@@ -693,8 +691,6 @@ export default function ProfilePage() {
                     value={modalProvince}
                     onChange={(e) => setModalProvince(e.target.value)}
                     placeholder="DKI Jakarta"
-                    required
-                    minLength={3}
                   />
                 </div>
                 <div>
@@ -712,23 +708,7 @@ export default function ProfilePage() {
                         setModalPostalCode(value);
                       }
                     }}
-                    onInvalid={(e) => {
-                      e.preventDefault();
-                      const input = e.target as HTMLInputElement;
-                      if (!modalPostalCode) {
-                        input.setCustomValidity('Kode pos harus diisi');
-                      } else if (modalPostalCode.length !== 5) {
-                        input.setCustomValidity('Kode pos harus 5 digit');
-                      } else {
-                        input.setCustomValidity('');
-                      }
-                    }}
-                    onInput={(e) => {
-                      const input = e.target as HTMLInputElement;
-                      input.setCustomValidity('');
-                    }}
                     placeholder="12345"
-                    required
                   />
                 </div>
               </div>

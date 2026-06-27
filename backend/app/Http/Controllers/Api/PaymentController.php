@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentResource;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +15,55 @@ use Illuminate\Support\Facades\Storage;
 class PaymentController extends Controller
 {
     use ApiResponse;
+
+    /**
+     * Create remaining payment record (for DP orders)
+     */
+    public function createRemainingPayment(Order $order): JsonResponse
+    {
+        // Check ownership
+        if ($order->user_id !== Auth::id()) {
+            return $this->errorResponse('Unauthorized', 403);
+        }
+
+        // Only for DP orders that have paid DP
+        if ($order->payment_type !== 'dp') {
+            return $this->errorResponse('Pesanan ini bukan sistem DP', 400);
+        }
+
+        if ($order->payment_status !== 'dp_paid') {
+            return $this->errorResponse('DP belum dikonfirmasi oleh admin', 400);
+        }
+
+        // Check if remaining payment already exists
+        $existingRemaining = Payment::where('order_id', $order->id)
+            ->where('payment_type', 'remaining')
+            ->first();
+
+        if ($existingRemaining) {
+            // Return existing
+            return $this->successResponse([
+                'payment_id' => $existingRemaining->id,
+                'amount'     => $existingRemaining->amount,
+                'status'     => $existingRemaining->status,
+            ], 'Tagihan pelunasan sudah ada');
+        }
+
+        // Create remaining payment record
+        $remaining = Payment::create([
+            'order_id'          => $order->id,
+            'payment_method_id' => $order->payment_method_id,
+            'amount'            => $order->remaining_amount,
+            'payment_type'      => 'remaining',
+            'status'            => 'pending',
+        ]);
+
+        return $this->successResponse([
+            'payment_id' => $remaining->id,
+            'amount'     => $remaining->amount,
+            'status'     => $remaining->status,
+        ], 'Tagihan pelunasan berhasil dibuat', 201);
+    }
 
     /**
      * Upload payment proof (for bank transfer)
@@ -35,13 +85,10 @@ class PaymentController extends Controller
         ]);
 
         try {
-            // Store payment proof
             $path = $request->file('payment_proof')->store('payment-proofs', 'public');
-
-            // Update payment
             $payment->update([
                 'payment_proof' => $path,
-                'status' => 'processing',
+                'status'        => 'processing',
             ]);
 
             return $this->successResponse(

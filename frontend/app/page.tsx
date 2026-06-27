@@ -1,17 +1,69 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
+import ProductCard from "@/components/ProductCard";
+import { fetchProducts, FrontendProduct } from "@/lib/products";
 
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<FrontendProduct[]>([]);
+  const [bestsellerProducts, setBestsellerProducts] = useState<FrontendProduct[]>([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+  const [isLoadingBestseller, setIsLoadingBestseller] = useState(true);
+
+  // Fetch produk Favorit
+  useEffect(() => {
+    fetchProducts({ sort: "recommended", per_page: 4 })
+      .then(r => {
+        // Filter tag Favorit atau Terlaris
+        const favorites = r.products.filter(
+          p => p.tag === "Favorit" || p.tag === "Favorit Keluarga"
+        ).slice(0, 4);
+        // Jika tidak ada yg di-tag, ambil 4 pertama
+        setFeaturedProducts(favorites.length > 0 ? favorites : r.products.slice(0, 4));
+      })
+      .catch(() => setFeaturedProducts([]))
+      .finally(() => setIsLoadingFeatured(false));
+  }, []);
+
+  // Fetch produk Terlaris
+  useEffect(() => {
+    fetchProducts({ sort: "recommended", per_page: 8 })
+      .then(r => {
+        const bestsellers = r.products.filter(p => p.tag === "Terlaris").slice(0, 4);
+        // Jika tidak ada, ambil produk lain yang bukan sudah di featured
+        setBestsellerProducts(bestsellers.length > 0 ? bestsellers : r.products.slice(0, 4));
+      })
+      .catch(() => setBestsellerProducts([]))
+      .finally(() => setIsLoadingBestseller(false));
+  }, []);
+
+  const formatPrice = (v: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(v);
+
+  // Skeleton card
+  const SkeletonCard = () => (
+    <div className="bg-surface-container-lowest rounded-xl overflow-hidden border border-surface-container-low animate-pulse">
+      <div className="h-64 bg-surface-container" />
+      <div className="p-6 space-y-3">
+        <div className="h-5 bg-surface-container rounded w-3/4" />
+        <div className="h-4 bg-surface-container rounded" />
+        <div className="h-4 bg-surface-container rounded w-2/3" />
+        <div className="h-10 bg-surface-container rounded mt-4" />
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {/* Shared Header Navigation */}
       <Navbar />
 
       <main className="w-full">
-        {/* Hero Section */}
+        {/* ── Hero Section ─────────────────────────────────────────────── */}
         <section className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-[64px] flex flex-col md:flex-row items-center gap-[48px]">
           <div className="flex-1 space-y-[24px]">
             <h1 className="font-display-lg text-display-lg text-on-background font-bold">
@@ -36,7 +88,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex-1 w-full relative">
-            <div className="absolute inset-0 bg-primary-container/10 rounded-2xl transform translate-x-4 translate-y-4"></div>
+            <div className="absolute inset-0 bg-primary-container/10 rounded-2xl transform translate-x-4 translate-y-4" />
             <div className="relative w-full h-[400px] md:h-[500px] z-10">
               <Image
                 alt="Kue Tradisional"
@@ -49,92 +101,107 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Kategori Populer */}
-        <section id="about" className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-[64px]">
-          <div className="text-center mb-[48px]">
-            <h2 className="font-headline-md text-headline-md text-primary mb-[8px] font-bold">Pilihan Favorit</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Jelajahi kategori terlaris dari dapur kami.</p>
+        {/* ── Produk Favorit (dinamis dari API) ────────────────────────── */}
+        <section className="bg-surface-container-low py-[64px] border-t border-surface-variant">
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[48px] gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                  <span className="font-label-sm text-label-sm text-tertiary font-bold uppercase tracking-wider">Pilihan Utama</span>
+                </div>
+                <h2 className="font-headline-md text-headline-md text-primary font-bold">Produk Favorit Pelanggan</h2>
+                <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                  Yang paling banyak dicintai dan sering dipesan kembali.
+                </p>
+              </div>
+              <Link
+                href="/products"
+                className="flex items-center gap-1 text-primary hover:text-primary-container font-label-sm text-label-sm transition-colors font-bold shrink-0"
+              >
+                Lihat Semua
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+              </Link>
+            </div>
+
+            {isLoadingFeatured ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : featuredProducts.length === 0 ? (
+              <div className="text-center py-16 text-on-surface-variant">
+                <span className="material-symbols-outlined text-5xl block mb-3">storefront</span>
+                <p className="font-body-md">Produk segera hadir. Tambahkan produk dengan tag <strong>Favorit</strong> di Admin Dashboard.</p>
+                <Link href="/products" className="inline-block mt-4 px-6 py-2 bg-primary text-on-primary rounded-full text-sm font-bold hover:opacity-90 transition-opacity">
+                  Lihat Semua Produk
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {featuredProducts.map(p => <ProductCard key={p.id} product={p} />)}
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-            {/* Card 1 */}
-            <Link
-              href="/products"
-              className="bg-surface rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(112,62,14,0.05)] hover:shadow-[0_8px_24px_rgba(112,62,14,0.1)] transition-all group cursor-pointer border border-surface-container flex flex-col hover:-translate-y-1 duration-300"
-            >
-              <div className="h-[240px] relative overflow-hidden">
-                <div className="absolute top-4 right-4 bg-tertiary text-on-tertiary font-label-sm text-label-sm px-3 py-1 rounded-full z-10 font-semibold">
-                  Tradisional
-                </div>
-                <Image
-                  alt="Roti Manis"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCe6PqN6eQf_CwHvCvZEhGaNd8Q6m6acLTBhdd8Odi-kF-ZvDd1ggx4ZfINgKtJEwaInkscS0LvkmjB0rj_zK8upwombuXM93x2px1WepJ-zMx-bQLWxUXU4d3uZBnl2b1OcMox_U1r574_w7jpqIILjh--3AYuQt-dHe1taIRgfwLaZs-ya_k7HS4Fh4vRPtq_X7EXzNVL1NrlbbdXrXUwDBnG3tMDr458AkjgXd5lR_rSFfIC_UAeD3pConitIxMNAYmnDYl4aJDz"
-                  fill
-                />
-              </div>
-              <div className="p-[24px] flex-grow flex flex-col justify-between">
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-on-background mb-[8px] font-bold">Roti Manis</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-[16px]">Lembut dengan isian melimpah khas resep keluarga.</p>
-                </div>
-                <p className="font-body-lg text-body-lg font-bold text-primary">Mulai Rp 12.000</p>
-              </div>
-            </Link>
+        </section>
 
-            {/* Card 2 */}
-            <Link
-              href="/products"
-              className="bg-surface rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(112,62,14,0.05)] hover:shadow-[0_8px_24px_rgba(112,62,14,0.1)] transition-all group cursor-pointer border border-surface-container flex flex-col hover:-translate-y-1 duration-300"
-            >
-              <div className="h-[240px] relative overflow-hidden">
-                <div className="absolute top-4 right-4 bg-tertiary text-on-tertiary font-label-sm text-label-sm px-3 py-1 rounded-full z-10 font-semibold">
-                  Favorit
-                </div>
-                <Image
-                  alt="Kue Basah"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZw1fFDTyETRsDVXKOhZnZtxuYuH-kxjf5EWkoWFNb8Uyz3V2gGjt0KKiJ4q8-cj9Dj0FrUsw_hgrkNVhT1spOQngExz_i9BrNpJNSuE2Tjh_LzLGH-ZCuGfz2A2KX8Mj8-IQ39LWbG-OCbtafNU-PHKK9Nir_SFokjJWfoc2jcu7t6YDMSKbkLW8ls5sjk1Ezd3-BZ5TqETZTxV9gBSPpHXVJ7vN0hayRK3QV--U0bHWa7szl0LwmsWmQnL_4BFOFbRCug_1zy325"
-                  fill
-                />
-              </div>
-              <div className="p-[24px] flex-grow flex flex-col justify-between">
+        {/* ── Produk Terlaris (dinamis dari API) ───────────────────────── */}
+        {(isLoadingBestseller || bestsellerProducts.length > 0) && (
+          <section className="py-[64px]">
+            <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[48px] gap-4">
                 <div>
-                  <h3 className="font-headline-md text-headline-md text-on-background mb-[8px] font-bold">Kue Basah</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-[16px]">Manis legit teman setia minum teh sore hari.</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+                    <span className="font-label-sm text-label-sm text-primary font-bold uppercase tracking-wider">Terlaris</span>
+                  </div>
+                  <h2 className="font-headline-md text-headline-md text-on-surface font-bold">Paling Banyak Dipesan</h2>
+                  <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                    Produk yang paling sering dibeli dan direkomendasikan pelanggan.
+                  </p>
                 </div>
-                <p className="font-body-lg text-body-lg font-bold text-primary">Mulai Rp 5.000</p>
+                <Link
+                  href="/products"
+                  className="flex items-center gap-1 text-primary hover:text-primary-container font-label-sm text-label-sm transition-colors font-bold shrink-0"
+                >
+                  Lihat Semua
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </Link>
               </div>
-            </Link>
 
-            {/* Card 3 */}
+              {isLoadingBestseller ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {bestsellerProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── CTA Banner ───────────────────────────────────────────────── */}
+        <section className="bg-primary py-[64px]">
+          <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop text-center">
+            <h2 className="font-headline-md text-headline-md text-on-primary font-bold mb-3">
+              Siap Memesan Kue Favorit Anda?
+            </h2>
+            <p className="font-body-lg text-on-primary/80 max-w-xl mx-auto mb-8">
+              Temukan koleksi lengkap roti dan kue kami. Dibuat fresh setiap hari dengan bahan pilihan terbaik.
+            </p>
             <Link
               href="/products"
-              className="bg-surface rounded-xl overflow-hidden shadow-[0_4px_12px_rgba(112,62,14,0.05)] hover:shadow-[0_8px_24px_rgba(112,62,14,0.1)] transition-all group cursor-pointer border border-surface-container flex flex-col hover:-translate-y-1 duration-300"
+              className="inline-flex items-center gap-2 bg-on-primary text-primary font-label-sm text-label-sm h-[52px] px-[40px] rounded-full hover:bg-primary-fixed transition-all shadow-lg font-bold active:scale-95"
             >
-              <div className="h-[240px] relative overflow-hidden">
-                <Image
-                  alt="Cake Premium"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWQ-VBmnDBtcoX1pPlu2nJg9ZJUovc907njeag3n-QMMCHfpZr2oM0KNjdhZ_mvGgUt5CmdcGT9wJM9WlLStLRfrO9P-7HLi847ZICn7oyU9bTFB4Q01gwn2tWk4IcATU4HOTnEiIddcJr892LMecZMFHRYwkM2tJyeuct-L4vwz6n5wG4EWjWGyWef8sJg0Yhn4FN5Bz2UzMUSOQPkv7Tt2MaxAB_YLrwHKIhvjWkn86s-aRHjwSqDnOcr-byIb7WUrt-17sSyatA"
-                  fill
-                />
-              </div>
-              <div className="p-[24px] flex-grow flex flex-col justify-between">
-                <div>
-                  <h3 className="font-headline-md text-headline-md text-on-background mb-[8px] font-bold">Cake Premium</h3>
-                  <p className="font-body-md text-body-md text-on-surface-variant mb-[16px]">Lapis Legit dan Bolu istimewa untuk momen berharga.</p>
-                </div>
-                <p className="font-body-lg text-body-lg font-bold text-primary">Mulai Rp 150.000</p>
-              </div>
+              <span className="material-symbols-outlined text-[20px]">storefront</span>
+              Jelajahi Semua Produk
             </Link>
           </div>
         </section>
       </main>
 
-      {/* Shared Footer */}
       <Footer />
-
-      {/* Drawer */}
       <CartDrawer />
     </>
   );

@@ -48,6 +48,7 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
 
 const PAYMENT_CFG: Record<string, { label: string; cls: string }> = {
   pending:  { label: "Menunggu", cls: "bg-surface-variant text-on-surface-variant border border-outline-variant" },
+  dp_paid:  { label: "DP Bayar", cls: "bg-primary-fixed text-on-primary-fixed border border-primary-fixed-dim" },
   paid:     { label: "Lunas",    cls: "bg-tertiary-fixed text-on-tertiary-fixed" },
   success:  { label: "Lunas",    cls: "bg-tertiary-fixed text-on-tertiary-fixed" },
   failed:   { label: "Gagal",    cls: "bg-error-container text-on-error-container" },
@@ -55,7 +56,7 @@ const PAYMENT_CFG: Record<string, { label: string; cls: string }> = {
 };
 
 const ORDER_STATUS_OPTIONS = ["pending", "processing", "shipped", "completed", "cancelled"];
-const PAYMENT_STATUS_OPTIONS = ["pending", "paid", "failed", "refunded"];
+const PAYMENT_STATUS_OPTIONS = ["pending", "dp_paid", "paid", "failed", "refunded"];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -122,13 +123,13 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handlePaymentStatusChange = async (orderId: number, newStatus: string) => {
+  const handleConfirmPayment = async (orderId: number) => {
     setUpdatingId(orderId);
     try {
-      await api.patch(`/admin/orders/${orderId}/payment-status`, { payment_status: newStatus }, token!);
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: newStatus } : o));
+      await api.patch(`/admin/orders/${orderId}/confirm-payment`, {}, token!);
+      fetchOrders();
     } catch (e: any) {
-      alert(e.message || "Gagal update status pembayaran");
+      alert(e.message || "Gagal konfirmasi pembayaran");
     } finally {
       setUpdatingId(null);
     }
@@ -263,23 +264,26 @@ export default function AdminOrdersPage() {
                         {formatPrice(order.total)}
                       </td>
 
-                      {/* Payment Status — dropdown */}
+                      {/* Payment Status — read-only badge + confirm button */}
                       <td className="py-4 px-6">
                         {isUpdating ? (
                           <span className="material-symbols-outlined animate-spin text-[16px] text-primary">progress_activity</span>
                         ) : (
-                          <select
-                            value={order.payment_status}
-                            onChange={e => { e.stopPropagation(); handlePaymentStatusChange(order.id, e.target.value); }}
-                            onClick={e => e.stopPropagation()}
-                            className={`text-xs font-bold px-2 py-1 rounded-full border-0 focus:ring-1 focus:ring-primary cursor-pointer ${pc.cls}`}
-                          >
-                            {PAYMENT_STATUS_OPTIONS.map(s => (
-                              <option key={s} value={s}>
-                                {PAYMENT_CFG[s]?.label || s}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${pc.cls}`}>
+                              {pc.label}
+                            </span>
+                            {/* Show confirm button only when payment can be confirmed */}
+                            {(order.payment_status === 'pending' || order.payment_status === 'dp_paid') && (
+                              <button
+                                onClick={e => { e.stopPropagation(); handleConfirmPayment(order.id); }}
+                                className="text-[10px] font-bold text-tertiary hover:underline flex items-center gap-0.5"
+                              >
+                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                {order.payment_status === 'dp_paid' ? 'Konfirmasi Lunas' : 'Konfirmasi Bayar'}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
 

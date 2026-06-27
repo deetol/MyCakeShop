@@ -6,11 +6,32 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductAdminController extends Controller
 {
     use ApiResponse;
+
+    /**
+     * Upload a product image and return the public URL.
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120', // 5MB max
+        ]);
+
+        $file = $request->file('image');
+        $filename = 'products/' . Str::uuid() . '.' . $file->getClientOriginalExtension();
+
+        // Store in public disk → accessible at APP_URL/storage/products/xxx.jpg
+        Storage::disk('public')->putFileAs('products', $file, basename($filename));
+
+        $url = Storage::disk('public')->url($filename);
+
+        return $this->successResponse(['url' => $url], 'Image uploaded successfully');
+    }
 
     /**
      * List all products (including inactive), with search & category filter.

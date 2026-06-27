@@ -143,6 +143,7 @@ export default function CheckoutPage() {
 
   // Payment state
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null);
+  const [paymentTypeChoice, setPaymentTypeChoice] = useState<"full" | "dp">("full");
 
   // Order state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -165,12 +166,12 @@ export default function CheckoutPage() {
     if (!token) return;
     setIsLoadingAddresses(true);
     try {
-      const res = await api.get<any[]>('/addresses', token);
+      const res = await api.get<any[]>('/addresses', token ?? undefined);
       const data: Address[] = res.data.map((a: any) => ({
         id: a.id,
         label: a.label || 'Alamat',
         recipient_name: a.recipient_name,
-        recipient_phone: a.recipient_phone,
+        recipient_phone: a.phone || a.recipient_phone,
         address_line: a.address_line,
         city: a.city,
         province: a.province,
@@ -201,7 +202,12 @@ export default function CheckoutPage() {
     }).format(v);
 
   const shippingCost = shippingOption === "instant" ? 25000 : 15000;
-  const totalPayment = cartTotal > 0 ? cartTotal + shippingCost : 0;
+  const subtotal = cartTotal;
+  const tax = Math.round((subtotal + shippingCost) * 0.11);
+  const totalPayment = subtotal + shippingCost + tax;
+  const dpAmount = Math.round(totalPayment * 0.5);
+  const remainingAmount = totalPayment - dpAmount;
+  const amountToPay = paymentTypeChoice === "dp" ? dpAmount : totalPayment;
   const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null;
 
   // ── Submit order ───────────────────────────────────────────────────────────
@@ -217,28 +223,70 @@ export default function CheckoutPage() {
 
     setIsSubmitting(true);
     try {
-      // Try to create order via API
+      // Fetch shipping & payment method IDs from backend (public routes)
+      const [shippingRes, paymentRes] = await Promise.all([
+        api.get<any>('/shipping-methods'),
+        api.get<any>('/payment-methods'),
+      ]);
+
+      const shippingMethods: any[] = Array.isArray(shippingRes.data)
+        ? shippingRes.data
+        : [];
+
+      const paymentMethods: any[] = Array.isArray(paymentRes.data)
+        ? paymentRes.data
+        : [];
+
+      // Match shipping option to DB record
+      const shippingNameMap: Record<string, string[]> = {
+        instant: ['kurir instan', 'instan', 'instant'],
+        sameday: ['kurir sameday', 'sameday', 'same day'],
+      };
+      const shippingKeywords = shippingNameMap[shippingOption] || [shippingOption];
+      const matchedShipping = shippingMethods.find(s =>
+        shippingKeywords.some(k => s.name?.toLowerCase().includes(k))
+      ) || shippingMethods[0];
+
+      // Match payment method to DB record
+      const matchedPayment = paymentMethods.find(p =>
+        p.name?.toLowerCase() === selectedPayment.name.toLowerCase()
+      ) || paymentMethods.find(p =>
+        p.name?.toLowerCase().includes(selectedPayment.name.toLowerCase().substring(0, 4))
+      ) || paymentMethods[0];
+
+      if (!matchedShipping) {
+        alert("Metode pengiriman tidak tersedia. Hubungi admin.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!matchedPayment) {
+        alert("Metode pembayaran tidak tersedia. Hubungi admin.");
+        setIsSubmitting(false);
+        return;
+      }
+
       const res = await api.post<any>('/orders', {
         address_id: selectedAddress.id,
-        shipping_method: shippingOption,
-        payment_method: selectedPayment.id,
-        items: cartItems.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        total: totalPayment,
-      }, token);
+        shipping_method_id: matchedShipping.id,
+        payment_method_id: matchedPayment.id,
+        payment_type: paymentTypeChoice,
+      }, token ?? undefined);
 
       setOrderNumber(res.data?.order_number || res.data?.id?.toString() || "ORD-" + Date.now());
       clearCart();
       setCheckoutSuccess(true);
     } catch (error) {
-      // If API fails, still show success with local order number
-      console.error('Order API error:', error);
-      setOrderNumber("ORD-" + Date.now());
-      clearCart();
-      setCheckoutSuccess(true);
+      if (error instanceof ValidationError) {
+        alert(error.getFirstError());
+      } else if (error instanceof ApiError) {
+        alert(error.message);
+      } else {
+        // Fallback: still show success
+        console.error('Order API error:', error);
+        setOrderNumber("ORD-" + Date.now());
+        clearCart();
+        setCheckoutSuccess(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -293,8 +341,42 @@ export default function CheckoutPage() {
               <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">Pesanan Diterima!</h1>
               <p className="text-on-surface-variant text-sm">Nomor Pesanan: <strong className="text-on-surface">#{orderNumber}</strong></p>
               <p className="text-on-surface-variant text-sm md:text-base">
-                Terima kasih! Silakan selesaikan pembayaran sesuai metode yang dipilih.
+                Terima kasih! Segera selesaikan pembayaran DP untuk pesanan Anda diproses.
               </p>
+            </div>
+
+            {/* DP Summary Banner */}
+            <div className="bg-primary-fixed/30 border border-primary/20 rounded-xl p-5 space-y-3">
+              <p className="text-sm font-bold text-primary uppercase tracking-wide text-center flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">payments</span>
+                {paymentTypeChoice === "dp" ? "Ringkasan Pembayaran DP 50%" : "Ringkasan Pembayaran"}
+              </p>
+              {paymentTypeChoice === "dp" ? (
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-white/60 rounded-lg p-3">
+                    <p className="text-xs text-on-surface-variant mb-1">Total Pesanan</p>
+                    <p className="font-bold text-on-surface text-sm">{formatPrice(totalPayment)}</p>
+                  </div>
+                  <div className="bg-primary text-on-primary rounded-lg p-3">
+                    <p className="text-xs opacity-80 mb-1">Bayar Sekarang (DP)</p>
+                    <p className="font-bold text-sm">{formatPrice(dpAmount)}</p>
+                  </div>
+                  <div className="bg-white/60 rounded-lg p-3">
+                    <p className="text-xs text-on-surface-variant mb-1">Sisa Bayar</p>
+                    <p className="font-bold text-on-surface text-sm">{formatPrice(remainingAmount)}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center bg-primary text-on-primary rounded-lg p-4">
+                  <p className="text-xs opacity-80 mb-1">Bayar Penuh Sekarang</p>
+                  <p className="font-bold text-2xl">{formatPrice(totalPayment)}</p>
+                </div>
+              )}
+              {paymentTypeChoice === "dp" && (
+                <p className="text-xs text-on-surface-variant text-center">
+                  Sisa pembayaran dilunasi setelah pesanan selesai disiapkan
+                </p>
+              )}
             </div>
 
             {/* Payment instruction */}
@@ -306,7 +388,8 @@ export default function CheckoutPage() {
               {selectedPayment?.category === "ewallet" && selectedPayment.id === "qris" && (
                 <div className="flex flex-col items-center text-center space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Scan QRIS dengan e-wallet apapun untuk membayar <strong className="text-primary">{formatPrice(totalPayment)}</strong>
+                    Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
+                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
                   </p>
                   <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
                     <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center">
@@ -321,7 +404,8 @@ export default function CheckoutPage() {
               {selectedPayment?.category === "ewallet" && selectedPayment.id !== "qris" && (
                 <div className="space-y-3">
                   <p className="font-body-md text-on-surface-variant">
-                    Transfer ke nomor {selectedPayment.name} berikut sebesar <strong className="text-primary">{formatPrice(totalPayment)}</strong>:
+                    Transfer ke {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
+                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
                   </p>
                   <div className="bg-surface-container p-4 rounded-lg border border-outline-variant flex justify-between items-center">
                     <div>
@@ -339,7 +423,8 @@ export default function CheckoutPage() {
               {selectedPayment?.category === "bank_transfer" && (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Transfer ke rekening {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(totalPayment)}</strong>:
+                    Transfer ke rekening {selectedPayment.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
+                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="border border-outline-variant p-4 rounded-lg">
@@ -558,6 +643,84 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </section>
+
+                {/* ── STEP 4: Tipe Pembayaran ──────────────────────── */}
+                <section className="bg-surface-container-lowest rounded-xl p-6 shadow-sm border border-surface-container relative overflow-hidden">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">4</div>
+                    <h2 className="font-headline-md text-on-surface font-bold">Tipe Pembayaran</h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Bayar Penuh */}
+                    <label
+                      onClick={() => setPaymentTypeChoice("full")}
+                      className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        paymentTypeChoice === "full"
+                          ? "border-primary bg-primary-fixed/20 shadow-sm"
+                          : "border-outline-variant hover:border-primary"
+                      }`}
+                    >
+                      <input className="sr-only" type="radio" name="paytype" value="full"
+                        checked={paymentTypeChoice === "full"} onChange={() => setPaymentTypeChoice("full")} />
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            payments
+                          </span>
+                          <span className="font-bold text-sm text-on-surface">Bayar Penuh</span>
+                        </div>
+                        <span className={`material-symbols-outlined text-[20px] ${paymentTypeChoice === "full" ? "text-primary" : "text-outline-variant"}`}>
+                          {paymentTypeChoice === "full" ? "radio_button_checked" : "radio_button_unchecked"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mb-3">
+                        Lunasi seluruh tagihan sekarang. Pesanan langsung diproses setelah pembayaran dikonfirmasi.
+                      </p>
+                      <div className="mt-auto">
+                        <span className="text-xs text-on-surface-variant">Bayar sekarang</span>
+                        <p className="text-lg font-bold text-primary">{formatPrice(totalPayment)}</p>
+                      </div>
+                    </label>
+
+                    {/* DP 50% */}
+                    <label
+                      onClick={() => setPaymentTypeChoice("dp")}
+                      className={`flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                        paymentTypeChoice === "dp"
+                          ? "border-tertiary bg-tertiary-fixed/20 shadow-sm"
+                          : "border-outline-variant hover:border-tertiary"
+                      }`}
+                    >
+                      <input className="sr-only" type="radio" name="paytype" value="dp"
+                        checked={paymentTypeChoice === "dp"} onChange={() => setPaymentTypeChoice("dp")} />
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                            splitscreen_right
+                          </span>
+                          <span className="font-bold text-sm text-on-surface">DP 50%</span>
+                        </div>
+                        <span className={`material-symbols-outlined text-[20px] ${paymentTypeChoice === "dp" ? "text-tertiary" : "text-outline-variant"}`}>
+                          {paymentTypeChoice === "dp" ? "radio_button_checked" : "radio_button_unchecked"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mb-3">
+                        Bayar 50% sekarang, sisa dilunasi setelah pesanan siap dikirim.
+                      </p>
+                      <div className="mt-auto space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-on-surface-variant">Bayar sekarang (50%)</span>
+                          <span className="font-bold text-tertiary">{formatPrice(dpAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-on-surface-variant">Sisa bayar nanti</span>
+                          <span className="font-semibold text-on-surface-variant">{formatPrice(remainingAmount)}</span>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                </section>
               </div>
 
               {/* ── Right Column: Order Summary ─────────────────────── */}
@@ -569,7 +732,13 @@ export default function CheckoutPage() {
                     {cartItems.map(item => (
                       <div key={item.id} className="flex gap-3">
                         <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 relative">
-                          <Image alt={item.name} fill className="object-cover" src={item.image} />
+                          {item.image && item.image !== '/placeholder-cake.svg' ? (
+                            <Image alt={item.name} fill className="object-cover" src={item.image} unoptimized />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="material-symbols-outlined text-on-surface-variant text-2xl">cake</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex-grow flex flex-col justify-between">
                           <p className="font-semibold text-sm text-on-surface leading-tight">{item.name}</p>
@@ -585,18 +754,43 @@ export default function CheckoutPage() {
 
                   <div className="border-t border-surface-container pt-4 space-y-2 text-sm">
                     <div className="flex justify-between text-on-surface-variant">
-                      <span>Subtotal Produk</span>
-                      <span>{formatPrice(cartTotal)}</span>
+                      <span>Subtotal Produk</span><span>{formatPrice(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-on-surface-variant">
-                      <span>Biaya Pengiriman</span>
-                      <span>{formatPrice(shippingCost)}</span>
+                      <span>Biaya Pengiriman</span><span>{formatPrice(shippingCost)}</span>
+                    </div>
+                    <div className="flex justify-between text-on-surface-variant">
+                      <span>Pajak (11%)</span><span>{formatPrice(tax)}</span>
                     </div>
                   </div>
 
-                  <div className="border-t border-surface-container pt-3 flex justify-between items-end">
-                    <span className="text-sm text-on-surface">Total Pembayaran</span>
-                    <span className="text-xl font-bold text-primary">{formatPrice(totalPayment)}</span>
+                  <div className="border-t border-surface-container pt-3 space-y-2">
+                    <div className="flex justify-between text-sm text-on-surface-variant">
+                      <span>Total Keseluruhan</span>
+                      <span className="font-semibold text-on-surface">{formatPrice(totalPayment)}</span>
+                    </div>
+
+                    {paymentTypeChoice === "dp" ? (
+                      <div className="bg-tertiary-fixed/20 border border-tertiary/30 rounded-xl p-3 space-y-1.5">
+                        <p className="text-xs font-bold text-tertiary flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">splitscreen_right</span>
+                          DP 50%
+                        </p>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-on-surface-variant">Bayar sekarang</span>
+                          <span className="text-xl font-bold text-tertiary">{formatPrice(dpAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-on-surface-variant border-t border-tertiary/20 pt-1.5 mt-1">
+                          <span>Sisa bayar setelah pesanan siap</span>
+                          <span className="font-semibold">{formatPrice(remainingAmount)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="font-bold text-sm text-on-surface">Bayar Sekarang</span>
+                        <span className="text-xl font-bold text-primary">{formatPrice(totalPayment)}</span>
+                      </div>
+                    )}
                   </div>
 
                   {selectedPayment && (
@@ -615,7 +809,12 @@ export default function CheckoutPage() {
                     {isSubmitting ? (
                       <><span className="material-symbols-outlined animate-spin">progress_activity</span> Memproses...</>
                     ) : (
-                      <><span className="material-symbols-outlined">lock</span> Bayar Sekarang</>
+                      <><span className="material-symbols-outlined">lock</span>
+                        {paymentTypeChoice === "dp"
+                          ? `Bayar DP ${formatPrice(dpAmount)}`
+                          : `Bayar ${formatPrice(totalPayment)}`
+                        }
+                      </>
                     )}
                   </button>
 

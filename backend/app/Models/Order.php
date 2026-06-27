@@ -8,32 +8,23 @@ use Illuminate\Support\Str;
 class Order extends Model
 {
     protected $fillable = [
-        'uuid',
-        'order_number',
-        'user_id',
-        'address_id',
-        'shipping_method_id',
-        'payment_method_id',
-        'status',
-        'payment_status',
-        'recipient_name',
-        'recipient_phone',
-        'shipping_address',
-        'city',
-        'province',
-        'postal_code',
-        'subtotal',
-        'shipping_cost',
-        'tax',
-        'total',
+        'uuid', 'order_number', 'user_id', 'address_id',
+        'shipping_method_id', 'payment_method_id',
+        'status', 'payment_status',
+        'recipient_name', 'recipient_phone',
+        'shipping_address', 'city', 'province', 'postal_code',
+        'subtotal', 'shipping_cost', 'tax', 'total',
+        'dp_amount', 'remaining_amount', 'payment_type',
         'notes',
     ];
 
     protected $casts = [
-        'subtotal' => 'decimal:2',
-        'shipping_cost' => 'decimal:2',
-        'tax' => 'decimal:2',
-        'total' => 'decimal:2',
+        'subtotal'         => 'decimal:2',
+        'shipping_cost'    => 'decimal:2',
+        'tax'              => 'decimal:2',
+        'total'            => 'decimal:2',
+        'dp_amount'        => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
     ];
 
     /**

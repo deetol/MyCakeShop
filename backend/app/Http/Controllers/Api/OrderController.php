@@ -28,7 +28,7 @@ class OrderController extends Controller
     public function index(): JsonResponse
     {
         $orders = Auth::user()->orders()
-            ->with(['shippingMethod', 'paymentMethod', 'payment'])
+            ->with(['shippingMethod', 'paymentMethod', 'payment', 'items.product'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -36,14 +36,19 @@ class OrderController extends Controller
     }
 
     /**
-     * Get order detail by UUID
+     * Get order detail by UUID or ID
      */
-    public function show(string $uuid): JsonResponse
+    public function show(string $uuidOrId): JsonResponse
     {
-        $order = Order::where('uuid', $uuid)
-            ->where('user_id', Auth::id())
-            ->with(['items', 'shippingMethod', 'paymentMethod', 'payment'])
-            ->first();
+        $query = Order::where('user_id', Auth::id())
+            ->with(['items.product', 'shippingMethod', 'paymentMethod', 'payment']);
+
+        // Support both UUID and numeric ID
+        if (is_numeric($uuidOrId)) {
+            $order = $query->where('id', $uuidOrId)->first();
+        } else {
+            $order = $query->where('uuid', $uuidOrId)->first();
+        }
 
         if (!$order) {
             return $this->errorResponse('Order not found', 404);
@@ -90,10 +95,16 @@ class OrderController extends Controller
             });
 
             $shippingCost = $shippingMethod->cost;
-            $tax = ($subtotal + $shippingCost) * 0.11; // 11% PPN
+            $tax = ($subtotal + $shippingCost) * 0.11;
             $total = $subtotal + $shippingCost + $tax;
 
-            // Create order with UUID and order number
+            // DP or full payment based on user choice
+            $paymentType = $request->payment_type ?? 'full';
+            $dpAmount = $paymentType === 'dp' ? round($total * 0.5, 2) : null;
+            $remainingAmount = $paymentType === 'dp' ? $total - $dpAmount : null;
+            $paymentAmount = $paymentType === 'dp' ? $dpAmount : $total;
+
+            // Create order
             $order = Order::create([
                 'uuid' => Str::uuid(),
                 'order_number' => $this->generateOrderNumber(),
@@ -103,45 +114,58 @@ class OrderController extends Controller
                 'payment_method_id' => $paymentMethod->id,
                 'status' => 'pending',
                 'payment_status' => 'pending',
-                
-                // Address snapshot
                 'recipient_name' => $address->recipient_name,
                 'recipient_phone' => $address->phone,
                 'shipping_address' => $address->address_line,
                 'city' => $address->city,
                 'province' => $address->province,
                 'postal_code' => $address->postal_code,
-                
-                // Pricing
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'tax' => $tax,
                 'total' => $total,
+                'dp_amount' => $dpAmount,
+                'remaining_amount' => $remainingAmount,
+                'payment_type' => $paymentType,
                 'notes' => $request->notes,
             ]);
 
-            // Create order items (snapshot product info)
+            // Create order items (snapshot product info) + decrement stock
             foreach ($cartItems as $cartItem) {
                 $price = $cartItem->productSize ? $cartItem->productSize->price : $cartItem->product->base_price;
                 $sizeName = $cartItem->productSize ? $cartItem->productSize->size_name : null;
+                $product = $cartItem->product;
+
+                // Check stock availability
+                if ($product->stock < $cartItem->quantity) {
+                    DB::rollBack();
+                    return $this->errorResponse(
+                        "Stok tidak mencukupi untuk produk '{$product->name}'. Tersedia: {$product->stock}",
+                        400
+                    );
+                }
 
                 OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $cartItem->product_id,
-                    'product_name' => $cartItem->product->name,
+                    'order_id'     => $order->id,
+                    'product_id'   => $cartItem->product_id,
+                    'product_name' => $product->name,
                     'product_size' => $sizeName,
-                    'quantity' => $cartItem->quantity,
-                    'price' => $price,
-                    'subtotal' => $price * $cartItem->quantity,
+                    'quantity'     => $cartItem->quantity,
+                    'price'        => $price,
+                    'subtotal'     => $price * $cartItem->quantity,
                 ]);
+
+                // Decrement stock immediately when order is placed
+                $product->decrement('stock', $cartItem->quantity);
             }
 
             // Create payment record
             $payment = Payment::create([
-                'order_id' => $order->id,
+                'order_id'          => $order->id,
                 'payment_method_id' => $paymentMethod->id,
-                'amount' => $total,
-                'status' => 'pending',
+                'amount'            => $paymentAmount,
+                'payment_type'      => $paymentType === 'dp' ? 'dp' : 'full',
+                'status'            => 'pending',
             ]);
 
             // Clear cart
@@ -181,7 +205,15 @@ class OrderController extends Controller
             return $this->errorResponse('Order cannot be cancelled', 400);
         }
 
-        $order->update(['status' => 'cancelled']);
+        // Restore stock when order is cancelled
+        $order->load('items.product');
+        foreach ($order->items as $item) {
+            if ($item->product) {
+                $item->product->increment('stock', $item->quantity);
+            }
+        }
+
+        $order->update(['status' => 'cancelled', 'payment_status' => 'failed']);
 
         return $this->successResponse(
             new OrderResource($order),
