@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Dokumentasi Teknis Resmi MyCakeShop - Platform pemesanan kue modern berbasis Next.js dan Laravel 12.">
+  <title>Dokumentasi Resmi MyCakeShop - Kue Lezat, Pemesanan Cepat</title>
+  <link rel="icon" type="image/x-icon" href="../frontend/app/favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <div id="app-container">
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <!-- Official MyCakeShop Logo -->
+          <img src="images/logo.png" alt="MyCakeShop Logo" style="width: 52px; height: 52px; object-fit: contain;">
+          <span>MyCakeShop</span>
+        </div>
+        <div class="search-container">
+          <input type="text" id="search-docs" class="search-input" placeholder="Cari dokumentasi...">
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div>
+          <div class="nav-section-title">Dokumentasi</div>
+          <ul class="nav-list">
+            <li>
+              <a href="#overview" class="nav-link active">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="7" height="9" x="3" y="3" rx="1" />
+                  <rect width="7" height="5" x="14" y="3" rx="1" />
+                  <rect width="7" height="9" x="14" y="12" rx="1" />
+                  <rect width="7" height="5" x="3" y="16" rx="1" />
+                </svg>
+                Overview & Fitur
+              </a>
+            </li>
+            <li>
+              <a href="#architecture" class="nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m20 12-8-8-8 8" />
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                </svg>
+                Arsitektur & Tech Stack
+              </a>
+            </li>
+            <li>
+              <a href="#setup" class="nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+                Panduan Penggunaan
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="nav-section-title">Informasi Proyek</div>
+          <ul class="nav-list">
+            <li>
+              <a href="#team" class="nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Tim Pengembang
+              </a>
+            </li>
+            <li>
+              <a href="#roadmap" class="nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Roadmap Pengembangan
+              </a>
+            </li>
+            <li>
+              <a href="#faq" class="nav-link">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                Frequently Asked Questions
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p>© 2026 MyCakeShop Team</p>
+      </div>
+    </aside>
+
+    <!-- HEADER & MAIN PANEL -->
+    <main class="main-content">
+
+      <!-- STICKY HEADER -->
+      <header class="header-panel">
+        <div class="header-title">Dokumentasi MyCakeShop</div>
+        <div class="header-controls">
+          <!-- Dark Theme Toggle Button -->
+          <button id="theme-toggle" class="theme-toggle-btn" title="Ganti Tema">
+            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+          </button>
+
+          <!-- GitHub Repository Button -->
+          <a href="https://github.com/Allutfi/MyCakeShop" target="_blank" class="github-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
+              <path d="M9 18c-4.51 2-5-2-7-2" />
+            </svg>
+            GitHub Repo
+          </a>
+
+          <!-- Mobile Toggle Menu Button -->
+          <button id="mobile-menu-toggle" class="mobile-menu-btn" title="Buka Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="18" x2="20" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTENT BODY -->
+      <div class="content-container">
+
+        <!-- SECTION 1: OVERVIEW & FITUR -->
+        <section id="overview" class="doc-section section-anchor">
+          <div class="hero-banner">
+            <h1>🎂 MyCakeShop</h1>
+            <p>Platform Pemesanan Kue Modern Berbasis Next.js dan Laravel 12 API. Memberikan pengalaman belanja yang
+              responsif, visual yang memanjakan mata, serta integrasi pemesanan yang mulus.</p>
+          </div>
+
+          <h2>Overview & Fitur Utama</h2>
+          <p class="lead-paragraph">MyCakeShop adalah solusi e-commerce end-to-end yang dirancang khusus untuk toko kue
+            modern. Proyek ini memisahkan Frontend dan Backend secara terpisah guna performa terbaik dan skalabilitas
+            tinggi.</p>
+
+          <div class="features-grid">
+            <!-- Feature 1 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                </svg>
+              </div>
+              <h3>Pencarian & Filter Produk</h3>
+              <p>Pelanggan dapat melakukan pencarian produk secara instan, memfilter berdasarkan kategori (Roti Manis,
+                Kue Kering, Jajanan Pasar), serta mengurutkan berdasarkan harga, rekomendasi, dan produk terbaru.</p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="21" r="1" />
+                  <circle cx="19" cy="21" r="1" />
+                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                </svg>
+              </div>
+              <h3>Manajemen Keranjang Belanja</h3>
+              <p>Dilengkapi dengan fitur kontrol kuantitas yang dinamis, kalkulasi subtotal, pajak, biaya pengemasan
+                secara otomatis, serta penghapusan item yang instan.</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="20" height="14" x="2" y="5" rx="2" />
+                  <line x1="2" y1="10" x2="22" y2="10" />
+                </svg>
+              </div>
+              <h3>QRIS Mock Simulator</h3>
+              <p>Simulasi pembayaran digital modern menggunakan QR Code dinamis berbasis ID transaksi dan total tagihan,
+                lengkap dengan tombol simulasi pembayaran sukses instan khusus mode development.</p>
+            </div>
+
+            <!-- Feature 4 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <h3>Autentikasi Aman</h3>
+              <p>Registrasi dan login pengguna yang aman memanfaatkan Laravel Sanctum dengan token-based session,
+                validasi data masukan yang ketat, serta pengamanan kata sandi yang terenkripsi.</p>
+            </div>
+
+            <!-- Feature 5 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <h3>Pilihan Alamat & Peta</h3>
+              <p>Pengguna dapat menyimpan beberapa alamat pengiriman sekaligus dan menentukan koordinat lokasi secara
+                visual menggunakan integrasi peta berbasis Leaflet.js.</p>
+            </div>
+
+            <!-- Feature 6 -->
+            <div class="feature-card">
+              <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M3 9h18" />
+                  <path d="M9 21V9" />
+                </svg>
+              </div>
+              <h3>Panel Admin Khusus</h3>
+              <p>Dashboard manajemen produk bagi administrator untuk memantau status pesanan, mengubah harga produk,
+                mengatur stok, dan mengunggah gambar produk secara real-time.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 2: ARCHITECTURE & TECH STACK -->
+        <section id="architecture" class="doc-section section-anchor">
+          <h2>Arsitektur & Tech Stack</h2>
+          <p class="lead-paragraph">MyCakeShop mengadopsi pola arsitektur decoupled (terpisah) di mana Next.js bertindak
+            sebagai klien (SPA) dan berkomunikasi dengan Laravel Backend yang bertindak sebagai REST API stateless
+            server.</p>
+
+          <div class="arch-container">
+            <!-- Diagram Card -->
+            <div class="arch-diagram-card">
+              <h3>Skema Arsitektur Sistem</h3>
+              <div class="diagram-flow">
+                <!-- Node 1 -->
+                <div class="diagram-node client">
+                  <div class="diagram-node-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="20" height="14" x="2" y="3" rx="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                  </div>
+                  <h4>Next.js Client</h4>
+                  <p>Frontend UI, Axios Client, Leaflet Maps, React Context</p>
+                </div>
+
+                <!-- Connector 1 -->
+                <div class="diagram-connector">
+                  <span>HTTPS / JSON</span>
+                  <div class="connector-arrow"></div>
+                  <span>REST API</span>
+                </div>
+
+                <!-- Node 2 -->
+                <div class="diagram-node server">
+                  <div class="diagram-node-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect width="20" height="8" x="2" y="3" rx="2" />
+                      <rect width="20" height="8" x="2" y="13" rx="2" />
+                      <line x1="6" y1="7" x2="6.01" y2="7" />
+                      <line x1="6" y1="17" x2="6.01" y2="17" />
+                    </svg>
+                  </div>
+                  <h4>Laravel 12 API</h4>
+                  <p>Route Controllers, Sanctum Auth, Eloquent ORM</p>
+                </div>
+
+                <!-- Connector 2 -->
+                <div class="diagram-connector">
+                  <span>SQL Query</span>
+                  <div class="connector-arrow"></div>
+                  <span>Driver PDO</span>
+                </div>
+
+                <!-- Node 3 -->
+                <div class="diagram-node database">
+                  <div class="diagram-node-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <ellipse cx="12" cy="5" rx="9" ry="3" />
+                      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+                    </svg>
+                  </div>
+                  <h4>MySQL</h4>
+                  <p>Users, Orders, Products, Cart Items, Payments</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tech Cards Grid -->
+            <div class="tech-grid">
+              <!-- Tech 1 -->
+              <div class="tech-card">
+                <div class="tech-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 12h8" />
+                    <path d="M12 8v8" />
+                  </svg>
+                </div>
+                <div class="tech-info">
+                  <h4>Next.js 16</h4>
+                  <p>Frontend framework React</p>
+                </div>
+              </div>
+
+              <!-- Tech 2 -->
+              <div class="tech-card">
+                <div class="tech-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  </svg>
+                </div>
+                <div class="tech-info">
+                  <h4>Tailwind CSS v4</h4>
+                  <p>Utility-first styling premium</p>
+                </div>
+              </div>
+
+              <!-- Tech 3 -->
+              <div class="tech-card">
+                <div class="tech-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                      d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  </svg>
+                </div>
+                <div class="tech-info">
+                  <h4>Laravel 12 REST API</h4>
+                  <p>PHP Backend Engine & Service Layer</p>
+                </div>
+              </div>
+
+              <!-- Tech 4 -->
+              <div class="tech-card">
+                <div class="tech-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </div>
+                <div class="tech-info">
+                  <h4>Laravel Sanctum</h4>
+                  <p>Token-based API Authentication</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 3: PANDUAN PENGGUNAAN -->
+        <section id="setup" class="doc-section section-anchor">
+          <h2>Panduan Penggunaan</h2>
+          <p class="lead-paragraph">Gunakan panduan di bawah ini untuk memahami alur operasional sistem MyCakeShop baik
+            dari sisi Pelanggan maupun Administrator.</p>
+
+          <div class="setup-tabs">
+            <button class="tab-btn active" data-tab="customer">Panduan Pelanggan (Customer)</button>
+            <button class="tab-btn" data-tab="admin">Panduan Administrator (Admin)</button>
+          </div>
+
+          <!-- CUSTOMER TAB CONTENT -->
+          <div id="customer-setup" class="tab-content active">
+            <!-- Step 1 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">1</span>
+                <span class="step-title">Pendaftaran & Login Akun</span>
+              </div>
+              <p>Pelanggan dapat mendaftar akun baru melalui halaman registrasi (<code>/register</code>) dengan
+                memasukkan nama lengkap, email, nomor telepon, dan sandi yang aman. Akun yang telah terdaftar kemudian
+                dapat digunakan untuk masuk melalui halaman login (<code>/login</code>).</p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">2</span>
+                <span class="step-title">Menjelajah Kue & Memasukkan ke Keranjang</span>
+              </div>
+              <p>Cari kue favorit Anda di halaman Produk (<code>/products</code>). Anda dapat memfilter kue berdasarkan
+                kategori (seperti Roti Manis, Kue Kering, Jajanan Pasar), melakukan pencarian teks, atau mengurutkan
+                harga kue. Klik tombol tambah untuk memasukkannya ke Keranjang Belanja (<code>/cart</code>).</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">3</span>
+                <span class="step-title">Pengisian Alamat dengan Peta Interaktif</span>
+              </div>
+              <p>Pada saat Checkout (<code>/checkout</code>), pelanggan wajib menyertakan alamat pengiriman. Sistem
+                menyediakan peta interaktif berbasis <strong>Leaflet.js</strong>. Pelanggan dapat menandai lokasi rumah
+                secara visual pada peta untuk memastikan koordinat pengiriman akurat bagi kurir.</p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">4</span>
+                <span class="step-title">Pembayaran QRIS Dinamis</span>
+              </div>
+              <p>Setelah memilih pengiriman (Instant/Sameday) dan menyelesaikan checkout, pelanggan diarahkan ke halaman
+                Pembayaran (<code>/order/[id]/pay</code>) yang menampilkan QR Code dinamis berbasis nominal transaksi.
+                Pada mode pengembangan, Anda dapat mengklik tombol <strong>Mensimulasikan Pembayaran Sukses</strong>
+                untuk mengubah status pesanan secara instan menjadi lunas.</p>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">5</span>
+                <span class="step-title">Melacak Pesanan & Memberi Ulasan (Review)</span>
+              </div>
+              <p>Riwayat belanja dan status pesanan (Diproses, Dikirim, Selesai) dapat dipantau di Dashboard
+                (<code>/dashboard</code>). Setelah pesanan selesai diterima, pelanggan dapat memberikan rating bintang
+                (1-5) beserta komentar ulasan pada kue yang dibeli di halaman Testimoni.</p>
+            </div>
+          </div>
+
+          <!-- ADMIN TAB CONTENT -->
+          <div id="admin-setup" class="tab-content">
+            <!-- Step 1 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">1</span>
+                <span class="step-title">Mengakses Panel Administrator</span>
+              </div>
+              <p>Admin dapat login melalui halaman login standar (<code>/login</code>) menggunakan credential akun
+                Administrator. Setelah berhasil login, Admin akan mendapatkan menu akses khusus ke panel manajemen toko
+                di header.</p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">2</span>
+                <span class="step-title">Manajemen Master Produk Kue</span>
+              </div>
+              <p>Melalui menu Produk (<code>/admin/products</code>), Admin dapat mengelola katalog toko. Admin bisa
+                menambahkan menu kue baru, mengatur kategori, menentukan harga per ukuran (Kecil, Sedang, Besar), serta
+                mengunggah gambar produk.</p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">3</span>
+                <span class="step-title">Pengendalian Stok Ketersediaan</span>
+              </div>
+              <p>Untuk mengontrol ketersediaan barang di etalase, Admin dapat mengakses menu Manajemen Stok
+                (<code>/admin/stock</code>). Admin dapat memperbarui jumlah ketersediaan unit kue secara instan untuk
+                tiap ukuran produk agar pelanggan tidak dapat memesan melebihi stok fisik yang ada.</p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-number">4</span>
+                <span class="step-title">Memproses Pesanan Masuk</span>
+              </div>
+              <p>Daftar pesanan dari semua pelanggan dapat dilihat pada sub-menu Pesanan (<code>/admin/orders</code>).
+                Admin dapat memantau status pembayaran QRIS, serta merubah status pengerjaan pesanan secara berkala dari
+                <strong>Diproses</strong>, <strong>Dikirim</strong>, hingga <strong>Selesai</strong>.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 4: TIM PENGEMBANG -->
+        <section id="team" class="doc-section section-anchor">
+          <h2>Tim Pengembang</h2>
+          <p class="lead-paragraph">Proyek MyCakeShop ini didesain dan dikembangkan secara kolaboratif oleh tim kami
+            yang berdedikasi tinggi.</p>
+ 
+          <div class="team-grid">
+            <!-- Member 1 -->
+            <div class="team-card">
+              <div class="team-avatar">MI</div>
+              <div class="team-info">
+                <h4>Maulana Ishaq</h4>
+                <div class="team-role">Project Manager</div>
+                <p class="team-desc">Mengoordinasi jalannya pengembangan proyek, menyelaraskan kebutuhan fitur, dan memastikan kesesuaian master plan integrasi.</p>
+              </div>
+            </div>
+ 
+            <!-- Member 2 -->
+            <div class="team-card">
+              <div class="team-avatar">ML</div>
+              <div class="team-info">
+                <h4>Mokhamad Lutfi</h4>
+                <div class="team-role">Fullstack Engineer</div>
+                <p class="team-desc">Merancang arsitektur database MySQL, mengimplementasikan REST API Laravel, dan membangun struktur integrasi Next.js.</p>
+              </div>
+            </div>
+ 
+            <!-- Member 3 -->
+            <div class="team-card">
+              <div class="team-avatar">MN</div>
+              <div class="team-info">
+                <h4>Muhammad Naufal Deewana</h4>
+                <div class="team-role">Frontend Engineer</div>
+                <p class="team-desc">Mengembangkan antarmuka pengguna Next.js yang responsif, mengintegrasikan peta alamat Leaflet, dan mengelola state aplikasi.</p>
+              </div>
+            </div>
+ 
+            <!-- Member 4 -->
+            <div class="team-card">
+              <div class="team-avatar">RA</div>
+              <div class="team-info">
+                <h4>Rendy Arifandi</h4>
+                <div class="team-role">Frontend Engineer</div>
+                <p class="team-desc">Merancang visual design system, memperhalus transisi halaman, dan melakukan pengujian fungsionalitas simulasi QRIS.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 5: ROADMAP -->
+        <section id="roadmap" class="doc-section section-anchor">
+          <h2>Roadmap Pengembangan</h2>
+          <p class="lead-paragraph">Rencana pengembangan berkelanjutan untuk memperkaya fitur dan stabilitas sistem
+            aplikasi MyCakeShop.</p>
+
+          <div class="roadmap-timeline">
+            <!-- Roadmap 1 -->
+            <div class="roadmap-item completed">
+              <div class="roadmap-node-badge">Selesai</div>
+              <div class="roadmap-content">
+                <h3>Fase 1: Arsitektur Utama & Autentikasi</h3>
+                <ul>
+                  <li>Pengaturan arsitektur Next.js 16 + Laravel 12 API.</li>
+                  <li>Sistem registrasi & login pengguna berbasis Laravel Sanctum.</li>
+                  <li>Skema database lengkap (users, products, sizes, categories, cart).</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Roadmap 2 -->
+            <div class="roadmap-item in-progress">
+              <div class="roadmap-node-badge">Sedang Berjalan</div>
+              <div class="roadmap-content">
+                <h3>Fase 2: Integrasi Fitur Interaktif</h3>
+                <ul>
+                  <li>Sistem ulasan/review produk dari sisi user.</li>
+                  <li>Simulasi sandbox pembayaran QRIS dinamis.</li>
+                  <li>Integrasi Leaflet.js untuk penentuan koordinat peta alamat pengiriman.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Roadmap 3 -->
+            <div class="roadmap-item upcoming">
+              <div class="roadmap-node-badge">Mendatang (Q3 2026)</div>
+              <div class="roadmap-content">
+                <h3>Fase 3: Optimasi UX & Notifikasi</h3>
+                <ul>
+                  <li>Notifikasi real-time untuk pembaruan status pesanan menggunakan WebSockets.</li>
+                  <li>Dukungan Progressive Web App (PWA) untuk instalasi perangkat seluler.</li>
+                  <li>Optimasi loading gambar produk dengan caching adaptif.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Roadmap 4 -->
+            <div class="roadmap-item upcoming">
+              <div class="roadmap-node-badge">Mendatang (Q4 2026)</div>
+              <div class="roadmap-content">
+                <h3>Fase 4: Skala Bisnis & Analitik</h3>
+                <ul>
+                  <li>Integrasi Payment Gateway resmi berlisensi (Midtrans / Xendit).</li>
+                  <li>Sistem reward/loyalty points belanja bagi pelanggan setia.</li>
+                  <li>Dashboard visual grafik penjualan dan analitik produk terlaris untuk Admin.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECTION 6: FAQ -->
+        <section id="faq" class="doc-section section-anchor">
+          <h2>Frequently Asked Questions</h2>
+          <p class="lead-paragraph">Jawaban atas beberapa pertanyaan umum dari pelanggan mengenai layanan pemesanan kue
+            di MyCakeShop.</p>
+
+          <div class="faq-container">
+            <!-- FAQ 1 -->
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>Bagaimana cara melakukan pembayaran pesanan di MyCakeShop?</span>
+                <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-inner">
+                  Kami menggunakan sistem pembayaran digital QRIS dinamis. Setelah Anda menyelesaikan checkout, sistem
+                  akan memunculkan kode QR unik di layar. Anda dapat melakukan scan kode tersebut dengan aplikasi
+                  e-wallet favorit Anda (GoPay, OVO, Dana, ShopeePay, LinkAja) atau aplikasi M-Banking Anda.
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>Bagaimana cara menentukan lokasi pengiriman saya di peta?</span>
+                <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-inner">
+                  Saat Anda menambahkan alamat pengiriman baru di formulir checkout, sebuah peta interaktif akan tampil.
+                  Anda cukup mengklik atau menggeser pin di peta ke lokasi pengantaran yang tepat. Ini akan membantu
+                  kurir menemukan rumah Anda dengan lebih akurat.
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>Dapatkah saya membatalkan pesanan yang sudah dibayar?</span>
+                <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-inner">
+                  Pesanan hanya dapat dibatalkan secara otomatis jika statusnya masih "Menunggu Pembayaran". Setelah
+                  pembayaran Anda terverifikasi dan pesanan masuk ke tahap "Diproses", pembatalan tidak dapat dilakukan
+                  secara mandiri karena kue sudah mulai disiapkan oleh tim dapur kami.
+                </div>
+              </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="faq-item">
+              <button class="faq-question">
+                <span>Apakah saya bisa memberikan ulasan (review) terhadap kue yang telah saya beli?</span>
+                <svg class="faq-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+              <div class="faq-answer">
+                <div class="faq-answer-inner">
+                  Tentu saja! Setelah status pesanan Anda berubah menjadi "Selesai" (kue telah diterima), Anda dapat
+                  membuka halaman ulasan/testimoni produk untuk memberikan rating bintang (1-5) beserta komentar
+                  mengenai rasa dan pelayanan kue kami.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
