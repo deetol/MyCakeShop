@@ -70,7 +70,7 @@ export default function ProductsPage() {
         <div className="animate-fade-up mb-12 text-center md:text-left flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
             <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-2 font-bold">
-              Etalase Rasa
+              Katalog Menu
             </h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
               Jelajahi koleksi roti manis, kue kering klasik, dan jajanan pasar otentik kami.

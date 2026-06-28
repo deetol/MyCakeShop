@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -29,12 +30,23 @@ export default function Navbar() {
     <header className={`w-full sticky top-0 z-50 bg-surface-container transition-all duration-300 ${scrolled ? "nav-scrolled shadow-md" : "shadow-sm"}`}>
       <div className="max-w-container-max mx-auto px-margin-desktop md:px-margin-desktop px-margin-mobile flex justify-between items-center h-20">
         {/* Logo */}
-        <Link
-          href="/"
-          className="animate-fade-down font-display-lg text-display-lg font-bold text-primary hover:opacity-90 transition-opacity hover:scale-[1.02]"
-        >
-          MyCakeShop
-        </Link>
+          <Link
+            href="/"
+            className="animate-fade-down flex items-center gap-4 transition-all duration-300 hover:opacity-90 hover:scale-[1.02]"
+          >
+            <Image
+              src="/images/Logo Modern MyCakeShop.png"
+              alt="MyCakeShop Logo"
+              width={140}
+              height={140}
+              priority
+              className="object-contain"
+            />
+
+            <span className="text-display-lg font-bold text-primary tracking-tight">
+              MyCakeShop
+            </span>
+          </Link>
 
         {/* Desktop Nav Links */}
         <nav className="animate-fade-down animation-delay-100 hidden md:flex items-center space-x-8">

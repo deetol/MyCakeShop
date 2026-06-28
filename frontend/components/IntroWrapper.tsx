@@ -5,10 +5,15 @@ import {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-const WORDS = ["Freshly Baked.", "Made with Love.", "Traditional Taste.", "Sweet Moments."];
-const BG    = "#2b1613";
-const CREAM = "#fff8f6";
-const GOLD  = "#ffb77f";
+const WORDS = [
+    "Freshly Baked.",
+    "Crafted with Passion.",
+    "Traditional Recipes.",
+    "Made for Every Moment."
+];
+const BG    = "#F4E8E3";
+const CREAM = "#6B3F1F";
+const GOLD = "#A5672D";
 
 export default function IntroWrapper() {
   // true dari awal — overlay ada sejak render pertama (SSR maupun client)
@@ -120,12 +125,12 @@ export default function IntroWrapper() {
             transition: { duration: 0.65, ease: "easeOut" } }}
           style={{
             color: CREAM,
-            fontFamily: `"Inter Tight","Inter",sans-serif`,
+            fontFamily: `"Playfair Display", serif`,
             fontSize: "clamp(28px,5vw,52px)",
             fontWeight: 800, lineHeight: 1.1,
           }}
         >
-          MYCAKESHOP
+          MyCakeShop
         </motion.div>
 
         {/* Divider */}
@@ -133,7 +138,7 @@ export default function IntroWrapper() {
           initial={{ scaleX: 0, opacity: 0 }}
           animate={{ scaleX: 1, opacity: 0.45,
             transition: { duration: 0.5, delay: 0.2, ease: "easeOut" } }}
-          style={{ width: 80, height: 1, background: GOLD, transformOrigin: "center" }}
+          style={{ width: 140, height: 1, background: GOLD, transformOrigin: "center" }}
         />
 
         {/* Cycling words */}
@@ -170,7 +175,7 @@ export default function IntroWrapper() {
               style={{
                 marginTop: 6, width: 68, height: 68, borderRadius: "50%",
                 border: `1.5px solid ${GOLD}`,
-                boxShadow: `0 0 28px ${GOLD}55,inset 0 0 16px ${GOLD}33`,
+                boxShadow: `0 0 12px ${GOLD}55,inset 0 0 16px ${GOLD}33`,
                 display: "grid", placeItems: "center", color: GOLD, fontSize: 26,
               }}
             >
@@ -178,20 +183,6 @@ export default function IntroWrapper() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Loading dots */}
-        {!showLogo && (
-          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            {[0, 1, 2].map(i => (
-              <motion.div
-                key={i}
-                style={{ width: 4, height: 4, borderRadius: "50%", background: GOLD }}
-                animate={{ opacity: [0.3, 0.9, 0.3], scale: [0.8, 1.2, 0.8] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </motion.div>
   );

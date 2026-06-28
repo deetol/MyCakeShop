@@ -15,7 +15,7 @@ export default function Footer() {
         <div className="reveal space-y-4">
           <h2 className="font-headline-md text-headline-md text-primary">MyCakeShop</h2>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-sm">
-            Menyajikan kehangatan dan kenyamanan melalui kue dan roti tradisional berkualitas tinggi sejak 2010.
+            Menyajikan kehangatan dan kenyamanan melalui kue dan roti tradisional berkualitas tinggi sejak 2026.
           </p>
         </div>
 
@@ -36,7 +36,7 @@ export default function Footer() {
         </div>
 
         <div className="reveal reveal-delay-2 flex flex-col justify-end text-left md:text-right font-body-md text-body-md text-on-surface-variant">
-          <p>© 2026 MyCakeShop</p>
+          <p>© 2026 MyCakeShop by Kelompok 1</p>
           <p className="text-sm mt-1 opacity-70">Kehangatan Tradisi di Setiap Gigitan</p>
         </div>
       </div>

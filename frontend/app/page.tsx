@@ -122,12 +122,12 @@ export default function Home() {
 
           <div className="animate-slide-right animation-delay-200 flex-1 w-full relative">
             <div className="absolute inset-0 bg-primary-container/10 rounded-2xl transform translate-x-4 translate-y-4" />
-            <div className="relative w-full h-[400px] md:h-[500px] z-10 img-zoom rounded-2xl overflow-hidden">
+            <div className="relative w-full h-[400px] md:h-[500px] rounded-2xl overflow-hidden">
               <Image
-                alt="Kue Tradisional"
+                src="/images/Kolase Foto - Indulge in Luxury.png"
+                alt="Hero"
+                fill
                 className="object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd-PFKsf2VHhCnmsZg7r3v77nQJOT0A5W_7trX6KybZ_QVrRYP28MZsOphJAdZiz_eiNYxOvAYlYzwxUix_19lbgku3pCCirfkwHSJwhY3q0vVhalEDK7AZokuD3k3Edvnco_Bajg44s5Vm9NZa_XF0kk9oWHg4t5qklyfaxIXiZ9p7Tw6iQ-MOuNQwWKlQlNApv2Bc_64fxsihpGegLfXnDFFGEf_y4nWtzaMg_SKc-7tJ08_zla5cusoIJ2-beHg7dmBlR7dWNav"
-                fill priority
               />
             </div>
           </div>
