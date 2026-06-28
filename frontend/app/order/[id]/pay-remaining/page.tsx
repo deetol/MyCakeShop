@@ -53,6 +53,22 @@ export default function PayRemainingPage() {
   const [remainingPaymentId, setRemainingPaymentId] = useState<number | null>(null);
   const [remainingPaymentProof, setRemainingPaymentProof] = useState<string | null>(null);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [isQrisPaid, setIsQrisPaid] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleSimulateQrisSuccess = async (paymentId: number) => {
+    if (!token) return;
+    setIsSimulating(true);
+    try {
+      await api.post<any>(`/payments/${paymentId}/simulate-qris-success`, {}, token);
+      setIsQrisPaid(true);
+    } catch (e: any) {
+      alert(e.message || "Gagal melakukan simulasi pembayaran.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
 
   useEffect(() => {
     if (!loading && !user) { router.push("/login"); }
@@ -204,17 +220,21 @@ export default function PayRemainingPage() {
         ) : !order ? null : paymentDone ? (
           /* Success */
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-6 text-center">
-            <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md mx-auto">
-              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>hourglass_empty</span>
+            <div className={`w-20 h-20 ${isQrisPaid ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-primary-container text-on-primary-container'} rounded-full flex items-center justify-center shadow-md mx-auto transition-colors duration-300`}>
+              <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>{isQrisPaid ? 'check_circle' : 'hourglass_empty'}</span>
             </div>
-            <h2 className="text-2xl font-bold text-primary">Permintaan Pelunasan Dikirim!</h2>
-            <p className="text-on-surface-variant">
-              Silakan transfer sisa pembayaran sebesar <strong className="text-primary">{formatPrice(order.remaining_amount)}</strong> sesuai metode yang dipilih. Admin akan mengkonfirmasi pembayaran Anda.
+            <h2 className="text-2xl font-bold text-primary">{isQrisPaid ? 'Pelunasan Berhasil!' : 'Permintaan Pelunasan Dikirim!'}</h2>
+            <p className="text-on-surface-variant text-sm md:text-base">
+              {isQrisPaid ? (
+                "Terima kasih! Pembayaran pelunasan Anda telah kami terima dan pesanan akan segera diproses/dikirim."
+              ) : (
+                <>Silakan transfer sisa pembayaran sebesar <strong className="text-primary">{formatPrice(order.remaining_amount)}</strong> sesuai metode yang dipilih. Admin akan mengkonfirmasi pembayaran Anda.</>
+              )}
             </p>
 
             {/* Payment instructions */}
             <div className="bg-surface-container-low rounded-xl p-5 text-left space-y-3">
-              <p className="font-bold text-sm text-on-surface">Detail Transfer Pelunasan:</p>
+              <p className="font-bold text-sm text-on-surface">{isQrisPaid ? 'Detail Pembayaran:' : 'Detail Transfer Pelunasan:'}</p>
               {selectedPayment?.id !== 'qris' && selectedPayment?.accountNumber && (
                 <div className="space-y-4">
                   <div className="bg-surface border border-outline-variant rounded-lg p-4 flex justify-between items-center">
@@ -283,10 +303,48 @@ export default function PayRemainingPage() {
                 </div>
               )}
               {selectedPayment?.id === 'qris' && (
-                <div className="flex flex-col items-center py-4">
-                  <span className="material-symbols-outlined text-primary text-7xl">qr_code_scanner</span>
-                  <p className="text-xs text-on-surface-variant mt-2">Scan QRIS dengan e-wallet pilihan</p>
-                </div>
+                isQrisPaid ? (
+                  <div className="flex flex-col items-center text-center space-y-4 py-6">
+                    <div className="w-16 h-16 bg-tertiary-container text-on-tertiary-container rounded-full flex items-center justify-center shadow-md animate-bounce">
+                      <span className="material-symbols-outlined text-3xl text-tertiary">check_circle</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-tertiary">Pelunasan Sukses</h3>
+                    <p className="text-xs text-on-surface-variant max-w-sm">
+                      Sistem simulasi telah memverifikasi pembayaran QRIS sukses. Status pesanan Anda kini telah lunas.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center py-4 space-y-4">
+                    <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (remainingPaymentId || "") + "_" + order.remaining_amount)}`} 
+                        alt="QRIS Mock" 
+                        className="w-full h-full object-contain" 
+                      />
+                    </div>
+                    <p className="text-xs text-on-surface-variant italic">Scan QRIS dengan e-wallet pilihan Anda</p>
+                    
+                    {process.env.NODE_ENV === "development" && remainingPaymentId && (
+                      <button
+                        onClick={() => handleSimulateQrisSuccess(remainingPaymentId)}
+                        disabled={isSimulating}
+                        className="mt-2 bg-tertiary text-on-tertiary hover:bg-tertiary/90 text-xs px-4 py-2.5 rounded-lg font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        {isSimulating ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-on-tertiary border-t-transparent rounded-full animate-spin" />
+                            Mensimulasikan...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">verified_user</span>
+                            [Simulasi] Pembayaran Berhasil
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )
               )}
               <div className="bg-primary text-on-primary rounded-lg p-3 text-center">
                 <p className="text-xs opacity-80">Jumlah Transfer</p>

@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Payment routes (customer)
     Route::post('/payments/{payment}/upload-proof', [PaymentController::class, 'uploadProof']);
     Route::post('/orders/{order}/create-remaining-payment', [PaymentController::class, 'createRemainingPayment']);
+    Route::post('/payments/{payment}/simulate-qris-success', [PaymentController::class, 'simulateQrisSuccess']);
 });
 
 // Admin only routes

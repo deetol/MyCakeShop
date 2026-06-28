@@ -151,6 +151,22 @@ export default function CheckoutPage() {
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
   const [isUploadingProof, setIsUploadingProof] = useState(false);
+  const [isQrisPaid, setIsQrisPaid] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  const handleSimulateQrisSuccess = async (paymentId: number) => {
+    if (!token) return;
+    setIsSimulating(true);
+    try {
+      await api.post<any>(`/payments/${paymentId}/simulate-qris-success`, {}, token);
+      setIsQrisPaid(true);
+    } catch (e: any) {
+      alert(e.message || "Gagal melakukan simulasi pembayaran.");
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -369,16 +385,19 @@ export default function CheckoutPage() {
         {checkoutSuccess && createdOrder ? (
           <div className="max-w-2xl mx-auto bg-surface-container-lowest rounded-2xl border border-surface-container shadow-xl p-8 space-y-8 animate-in fade-in zoom-in-95 duration-300">
             <div className="text-center space-y-3">
-              <div className="w-20 h-20 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center shadow-md mx-auto">
-                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>hourglass_empty</span>
+              <div className={`w-20 h-20 ${isQrisPaid ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-primary-container text-on-primary-container'} rounded-full flex items-center justify-center shadow-md mx-auto transition-colors duration-300`}>
+                <span className="material-symbols-outlined" style={{ fontSize: "40px" }}>{isQrisPaid ? 'check_circle' : 'hourglass_empty'}</span>
               </div>
-              <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">Pesanan Diterima!</h1>
+              <h1 className="font-display-lg text-2xl md:text-3xl text-primary font-bold">{isQrisPaid ? 'Pembayaran Berhasil!' : 'Pesanan Diterima!'}</h1>
               <p className="text-on-surface-variant text-sm">Nomor Pesanan: <strong className="text-on-surface">#{createdOrder.order_number}</strong></p>
               <p className="text-on-surface-variant text-sm md:text-base">
-                {selectedPayment?.id === "qris"
-                  ? "Terima kasih! Silakan pindai kode QRIS di bawah ini untuk menyelesaikan pembayaran pesanan Anda."
-                  : "Terima kasih! Segera lakukan transfer dan unggah bukti pembayaran agar pesanan Anda dapat diproses."
-                }
+                {isQrisPaid ? (
+                  "Terima kasih! Pembayaran Anda telah kami terima dan pesanan akan segera diproses."
+                ) : selectedPayment?.id === "qris" ? (
+                  "Terima kasih! Silakan pindai kode QRIS di bawah ini untuk menyelesaikan pembayaran pesanan Anda."
+                ) : (
+                  "Terima kasih! Segera lakukan transfer dan unggah bukti pembayaran agar pesanan Anda dapat diproses."
+                )}
               </p>
             </div>
 
@@ -394,8 +413,8 @@ export default function CheckoutPage() {
                     <p className="text-xs text-on-surface-variant mb-1">Total Pesanan</p>
                     <p className="font-bold text-on-surface text-sm">{formatPrice(totalPayment)}</p>
                   </div>
-                  <div className="bg-primary text-on-primary rounded-lg p-3">
-                    <p className="text-xs opacity-80 mb-1">Bayar Sekarang (DP)</p>
+                  <div className={`rounded-lg p-3 ${isQrisPaid ? 'bg-tertiary text-on-tertiary' : 'bg-primary text-on-primary'} transition-colors duration-300`}>
+                    <p className="text-xs opacity-80 mb-1">{isQrisPaid ? 'Lunas (DP)' : 'Bayar Sekarang (DP)'}</p>
                     <p className="font-bold text-sm">{formatPrice(dpAmount)}</p>
                   </div>
                   <div className="bg-white/60 rounded-lg p-3">
@@ -404,8 +423,8 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center bg-primary text-on-primary rounded-lg p-4">
-                  <p className="text-xs opacity-80 mb-1">Bayar Penuh Sekarang</p>
+                <div className={`text-center rounded-lg p-4 ${isQrisPaid ? 'bg-tertiary text-on-tertiary' : 'bg-primary text-on-primary'} transition-colors duration-300`}>
+                  <p className="text-xs opacity-80 mb-1">{isQrisPaid ? 'Lunas' : 'Bayar Penuh Sekarang'}</p>
                   <p className="font-bold text-2xl">{formatPrice(totalPayment)}</p>
                 </div>
               )}
@@ -419,23 +438,56 @@ export default function CheckoutPage() {
             {/* Payment instruction */}
             <div className="bg-surface-container-low p-6 rounded-xl border border-surface-container space-y-4">
               <h2 className="font-headline-md text-lg font-bold text-on-surface border-b border-surface-container-high pb-2">
-                Panduan Pembayaran — {selectedPayment?.name}
+                {isQrisPaid ? 'Detail Pembayaran' : `Panduan Pembayaran — ${selectedPayment?.name}`}
               </h2>
 
               {selectedPayment?.id === "qris" ? (
-                <div className="flex flex-col items-center text-center space-y-4">
-                  <p className="font-body-md text-on-surface-variant">
-                    Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
-                  </p>
-                  <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
-                    <div className="w-full h-full border-2 border-dashed border-primary/40 rounded flex flex-col items-center justify-center">
-                      <span className="material-symbols-outlined text-primary text-5xl">qr_code_scanner</span>
-                      <span className="text-[10px] font-bold text-on-surface-variant mt-2">QRIS PEMBAYARAN</span>
+                isQrisPaid ? (
+                  <div className="flex flex-col items-center text-center space-y-4 py-6">
+                    <div className="w-16 h-16 bg-tertiary-container text-on-tertiary-container rounded-full flex items-center justify-center shadow-md animate-bounce">
+                      <span className="material-symbols-outlined text-3xl text-tertiary">check_circle</span>
                     </div>
+                    <h3 className="text-lg font-bold text-tertiary">Pembayaran Berhasil</h3>
+                    <p className="text-xs text-on-surface-variant max-w-sm">
+                      Sistem simulasi telah mendeteksi pembayaran QRIS Anda sukses. Pesanan Anda kini langsung masuk proses pengerjaan.
+                    </p>
                   </div>
-                  <p className="text-xs text-on-surface-variant italic">Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.</p>
-                </div>
+                ) : (
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <p className="font-body-md text-on-surface-variant">
+                      Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
+                      {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
+                    </p>
+                    <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (createdOrder.payment?.id || "") + "_" + amountToPay)}`} 
+                        alt="QRIS Mock" 
+                        className="w-full h-full object-contain" 
+                      />
+                    </div>
+                    <p className="text-xs text-on-surface-variant italic">Mendukung GoPay, OVO, Dana, LinkAja, ShopeePay, dan M-Banking.</p>
+                    
+                    {process.env.NODE_ENV === "development" && (
+                      <button
+                        onClick={() => handleSimulateQrisSuccess(createdOrder.payment?.id)}
+                        disabled={isSimulating}
+                        className="mt-2 bg-tertiary text-on-tertiary hover:bg-tertiary/90 text-xs px-4 py-2.5 rounded-lg font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        {isSimulating ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-on-tertiary border-t-transparent rounded-full animate-spin" />
+                            Mensimulasikan...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">verified_user</span>
+                            [Simulasi] Pembayaran Berhasil
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">

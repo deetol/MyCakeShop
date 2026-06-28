@@ -157,4 +157,29 @@ class PaymentController extends Controller
             'Payment rejected'
         );
     }
+
+    /**
+     * Simulate QRIS payment success (for development/testing only)
+     */
+    public function simulateQrisSuccess(Payment $payment): JsonResponse
+    {
+        if ($payment->status === 'success') {
+            return $this->errorResponse('Payment already confirmed', 400);
+        }
+
+        try {
+            $payment->update([
+                'status' => 'success',
+                'paid_at' => now(),
+            ]);
+
+            return $this->successResponse(
+                new PaymentResource($payment->fresh(['paymentMethod'])),
+                'Pembayaran QRIS berhasil disimulasikan (Sukses)!'
+            );
+        } catch (\Exception $e) {
+            return $this->errorResponse('Gagal melakukan simulasi pembayaran: ' . $e->getMessage(), 500);
+        }
+    }
 }
+
