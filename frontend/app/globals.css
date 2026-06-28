@@ -126,3 +126,259 @@ html, body, * {
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-inter-tight), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS & KEYFRAMES
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ─────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0);   }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0   rgba(112, 62, 14, 0.35); }
+  70%  { box-shadow: 0 0 0 10px rgba(112, 62, 14, 0);   }
+  100% { box-shadow: 0 0 0 0   rgba(112, 62, 14, 0);    }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes marquee-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ── Scroll-reveal base state ──────────────────────────────────── */
+/* Elemen dengan class .reveal mulai tidak terlihat */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity  0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.reveal-left  { transform: translateX(-32px); }
+.reveal.reveal-right { transform: translateX(32px);  }
+.reveal.reveal-scale { transform: scale(0.93);        }
+
+/* Saat elemen masuk viewport → tambah class .visible */
+.reveal.visible {
+  opacity: 1;
+  transform: translate(0) scale(1);
+}
+
+/* Safety: jika JS tidak berjalan, elemen tetap terlihat setelah 2 detik */
+@media (scripting: none) {
+  .reveal { opacity: 1; transform: none; }
+}
+
+/* Stagger delay */
+.reveal-delay-1 { transition-delay: 0.08s; }
+.reveal-delay-2 { transition-delay: 0.16s; }
+.reveal-delay-3 { transition-delay: 0.24s; }
+.reveal-delay-4 { transition-delay: 0.32s; }
+.reveal-delay-5 { transition-delay: 0.40s; }
+.reveal-delay-6 { transition-delay: 0.48s; }
+
+/* ── Page-load entrance ────────────────────────────────────────── */
+.animate-fade-up    { animation: fade-up    0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in    { animation: fade-in    0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-down  { animation: fade-down  0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in   { animation: scale-in   0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-slide-left { animation: slide-in-left  0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-right{ animation: slide-in-right 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-float      { animation: float 3.5s ease-in-out infinite; }
+.animate-spin-slow  { animation: spin-slow 8s linear infinite; }
+
+/* Delay utilities */
+.animation-delay-100 { animation-delay: 0.1s; }
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-300 { animation-delay: 0.3s; }
+.animation-delay-400 { animation-delay: 0.4s; }
+.animation-delay-500 { animation-delay: 0.5s; }
+.animation-delay-600 { animation-delay: 0.6s; }
+.animation-delay-700 { animation-delay: 0.7s; }
+
+/* ── Marquee / ticker ──────────────────────────────────────────── */
+.marquee-wrapper {
+  overflow: hidden;
+  width: 100%;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  mask-image:         linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+}
+.marquee-track {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  width: max-content;
+  animation: marquee-left var(--marquee-duration, 30s) linear infinite;
+  will-change: transform;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Enhanced card hover ───────────────────────────────────────── */
+.card-hover {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+.card-hover:hover {
+  box-shadow:
+    0 4px  6px -1px  rgba(112, 62, 14, 0.08),
+    0 20px 25px -5px rgba(112, 62, 14, 0.12);
+  transform: translateY(-4px);
+}
+
+/* ── Button press micro-interaction ───────────────────────────── */
+button, a[role="button"], [type="submit"] {
+  transition:
+    transform    0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow   0.15s cubic-bezier(0.4, 0, 0.2, 1),
+    background   0.2s  cubic-bezier(0.4, 0, 0.2, 1),
+    color        0.2s  cubic-bezier(0.4, 0, 0.2, 1),
+    opacity      0.2s  cubic-bezier(0.4, 0, 0.2, 1);
+}
+button:active:not(:disabled), a[role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* ── Smooth link underline ─────────────────────────────────────── */
+.link-underline {
+  position: relative;
+}
+.link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.link-underline:hover::after {
+  width: 100%;
+}
+
+/* ── Shimmer loading skeleton ──────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-container)     25%,
+    var(--color-surface-container-high) 50%,
+    var(--color-surface-container)     75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.375rem;
+}
+
+/* ── Navbar scroll shadow ──────────────────────────────────────── */
+.nav-scrolled {
+  box-shadow: 0 1px 12px rgba(112, 62, 14, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Image zoom on hover ───────────────────────────────────────── */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img,
+.img-zoom > div > img {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+.img-zoom:hover img,
+.img-zoom:hover > div > img {
+  transform: scale(1.06);
+}
+
+/* ── Stagger children fade-up ──────────────────────────────────── */
+/* Pakai pada parent, semua child langsung dapat stagger */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.stagger-children > *:nth-child(1)  { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2)  { animation-delay: 0.12s; }
+.stagger-children > *:nth-child(3)  { animation-delay: 0.19s; }
+.stagger-children > *:nth-child(4)  { animation-delay: 0.26s; }
+.stagger-children > *:nth-child(5)  { animation-delay: 0.33s; }
+.stagger-children > *:nth-child(6)  { animation-delay: 0.40s; }
+.stagger-children > *:nth-child(7)  { animation-delay: 0.47s; }
+.stagger-children > *:nth-child(8)  { animation-delay: 0.54s; }
+
+/* ── Focus ring ────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ── Smooth scroll ─────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Respect reduced motion ────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:   0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:  0.01ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

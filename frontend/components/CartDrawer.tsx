@@ -71,8 +71,8 @@ export default function CartDrawer() {
       {/* Slide-over panel */}
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
         <div
-          className={`w-screen max-w-md bg-surface border-l border-outline-variant transform transition-transform duration-300 ease-in-out shadow-2xl flex flex-col h-full ${
-            isCartOpen ? "translate-x-0" : "translate-x-full"
+          className={`w-screen max-w-md bg-surface border-l border-outline-variant transform transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-2xl flex flex-col h-full ${
+            isCartOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
           }`}
         >
           {/* Header */}
@@ -94,22 +94,22 @@ export default function CartDrawer() {
             {checkoutStep === "success" ? (
               /* Success Checkout Screen */
               <div className="flex flex-col items-center justify-center text-center h-full space-y-6 py-12">
-                <div className="w-24 h-24 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-lg animate-bounce">
-                  <span className="material-symbols-outlined" style={{ fontSize: "48px" }}>
+                <div className="w-24 h-24 bg-tertiary-fixed text-on-tertiary-fixed rounded-full flex items-center justify-center shadow-lg animate-scale-in">
+                  <span className="material-symbols-outlined animate-fade-in animation-delay-200" style={{ fontSize: "48px", fontVariationSettings: "'FILL' 1" }}>
                     check_circle
                   </span>
                 </div>
-                <div>
+                <div className="animate-fade-up animation-delay-300">
                   <h3 className="font-display-lg-mobile text-display-lg-mobile text-primary font-bold mb-2">
                     Checkout Berhasil!
                   </h3>
                   <p className="font-body-md text-body-md text-on-surface-variant max-w-xs">
-                    Terima kasih telah memesan di MyCakeShop. Pesanan Anda sedang kami proses. Kehangatan tradisi akan segera tiba!
+                    Terima kasih! Pesanan Anda sedang kami proses. Kehangatan tradisi akan segera tiba!
                   </p>
                 </div>
                 <button
                   onClick={() => setCartOpen(false)}
-                  className="bg-primary text-on-primary px-8 py-3 rounded-full font-label-sm text-label-sm shadow-md hover:bg-primary-container transition-colors active:scale-95 duration-150"
+                  className="animate-fade-up animation-delay-400 bg-primary text-on-primary px-8 py-3 rounded-full font-label-sm text-label-sm shadow-md hover:bg-primary-container transition-all hover:-translate-y-0.5 active:scale-95"
                 >
                   Kembali ke Katalog
                 </button>
@@ -140,11 +140,12 @@ export default function CartDrawer() {
               </div>
             ) : (
               /* Items List */
-              <div className="space-y-6">
-                {cartItems.map((item) => (
+              <div className="space-y-4">
+                {cartItems.map((item, i) => (
                   <div
                     key={item.id}
-                    className="flex gap-4 p-4 rounded-xl bg-surface-container-lowest border border-surface-container-low transition-all hover:shadow-xs"
+                    className="animate-fade-up flex gap-4 p-4 rounded-xl bg-surface-container-lowest border border-surface-container-low transition-all duration-200 hover:shadow-sm hover:border-primary/20"
+                    style={{ animationDelay: `${i * 0.06}s` }}
                   >
                     {/* Item Image */}
                     <div className="relative w-20 h-20 bg-surface-container rounded-lg overflow-hidden flex-shrink-0">
@@ -227,35 +228,31 @@ export default function CartDrawer() {
             )}
           </div>
 
-          {/* Footer (Total and Checkout button) */}
+          {/* Footer */}
           {checkoutStep !== "success" && cartItems.length > 0 && (
-            <div className="p-6 border-t border-surface-container bg-surface-container-lowest space-y-4">
+            <div className="p-6 border-t border-surface-container bg-surface-container-lowest space-y-4 animate-fade-up">
               <div className="flex justify-between items-center">
                 <span className="font-body-lg text-body-lg text-on-surface-variant font-medium">
                   Total Pembayaran
                 </span>
-                <span className="font-display-lg-mobile text-headline-md text-primary font-bold">
+                <span className="font-display-lg-mobile text-headline-md text-primary font-bold transition-all duration-200">
                   {formatPrice(cartTotal)}
                 </span>
               </div>
               <Link
                 href="/checkout"
                 onClick={() => setCartOpen(false)}
-                className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-primary-container transition-colors active:scale-95 duration-150 shadow-md font-bold text-center justify-center"
+                className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 shadow-md font-bold hover:-translate-y-0.5 hover:shadow-lg"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  shopping_cart_checkout
-                </span>
+                <span className="material-symbols-outlined text-[20px]">shopping_cart_checkout</span>
                 Checkout Sekarang
               </Link>
               <Link
                 href="/cart"
                 onClick={() => setCartOpen(false)}
-                className="w-full h-12 border border-primary text-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-surface-container transition-colors active:scale-95 duration-150 font-bold"
+                className="w-full h-12 border border-primary text-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-surface-container transition-all active:scale-95 font-bold"
               >
-                <span className="material-symbols-outlined text-[20px]">
-                  shopping_cart
-                </span>
+                <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
                 Lihat Keranjang Lengkap
               </Link>
               <p className="text-center font-label-sm text-[11px] text-on-surface-variant">

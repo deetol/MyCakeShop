@@ -84,11 +84,11 @@ export default function LoginPage() {
         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
         Beranda
       </Link>
-      {/* Main Container: Asymmetric Split Layout */}
+      {/* Main Container */}
       <div className="max-w-container-max w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
         
         {/* Left Side: Hero Image */}
-        <div className="hidden lg:block w-full h-[819px] rounded-xl overflow-hidden relative shadow-ambient group">
+        <div className="animate-fade-in hidden lg:block w-full h-[819px] rounded-xl overflow-hidden relative shadow-ambient group">
           <Image
             alt="Warm bakery scene"
             fill
@@ -97,8 +97,7 @@ export default function LoginPage() {
             className="object-cover transition-transform duration-700 group-hover:scale-105"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9ym1PhlKNisLQ-7eZmWitlVvsxXnNXcayiheGGq0ZSNaqgZD3SC_swzJ-hTCIhkoeDKXcWOm0UnOw3TeqxuwyxaNG_olmEKT_WyAAp4DAhBtRy0xJ8oVCDtkNxQfhUutilK7V58-qR1qFGnfiEGnQcfXXfrdT3bHMHg7TSV5k8Rll9SMONgwibc9lg1De4JiOz_JMV-tA909KFqP_TXe6M6beLe_CWiIcajxHwdj_CCyH38EuGlGB46D9fcJQYd2LZowKX6a2hbI8"
           />
-          {/* Glassmorphism overlay badge */}
-          <div className="absolute bottom-8 left-8 right-8 backdrop-blur-md bg-surface/80 p-6 rounded-lg border border-surface-bright/50">
+          <div className="absolute bottom-8 left-8 right-8 backdrop-blur-md bg-surface/80 p-6 rounded-lg border border-surface-bright/50 animate-fade-up animation-delay-300">
             <h2 className="font-headline-md text-headline-md text-primary mb-2 font-bold">
               Kehangatan di setiap gigitan.
             </h2>
@@ -108,11 +107,11 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Right Side: Login Form Canvas */}
-        <div className="w-full max-w-md mx-auto lg:mx-0 bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-ambient border border-outline-variant/30">
+        {/* Right Side: Login Form */}
+        <div className="animate-slide-right w-full max-w-md mx-auto lg:mx-0 bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-ambient border border-outline-variant/30">
           
           {/* Brand Header */}
-          <div className="text-center mb-8">
+          <div className="animate-fade-down text-center mb-8">
             <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-2 font-bold">
               MyCakeShop
             </h1>

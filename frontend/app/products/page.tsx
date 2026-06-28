@@ -6,8 +6,10 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import CartDrawer from "@/components/CartDrawer";
 import { fetchProducts, fetchCategories, FrontendProduct, ApiCategory } from "@/lib/products";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 export default function ProductsPage() {
+  const mainRef = useScrollReveal<HTMLElement>();
   const [products, setProducts] = useState<FrontendProduct[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,9 +65,9 @@ export default function ProductsPage() {
     <div className="bg-background text-on-background min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-grow w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 md:py-16">
+      <main ref={mainRef} className="flex-grow w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 md:py-16">
         {/* Page Header */}
-        <div className="mb-12 text-center md:text-left flex flex-col md:flex-row justify-between items-end gap-6">
+        <div className="animate-fade-up mb-12 text-center md:text-left flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
             <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-2 font-bold">
               Etalase Rasa
@@ -75,14 +77,14 @@ export default function ProductsPage() {
             </p>
           </div>
           {total > 0 && (
-            <p className="text-sm text-on-surface-variant font-semibold shrink-0">
+            <p className="text-sm text-on-surface-variant font-semibold shrink-0 animate-fade-in animation-delay-300">
               {total} produk tersedia
             </p>
           )}
         </div>
 
         {/* Filter Bar */}
-        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-12 gap-6 bg-surface-container-lowest p-4 rounded-xl shadow-xs border border-surface-container-low">
+        <div className="animate-fade-up animation-delay-100 flex flex-col lg:flex-row justify-between items-stretch lg:items-center mb-12 gap-6 bg-surface-container-lowest p-4 rounded-xl shadow-xs border border-surface-container-low">
           {/* Category Chips */}
           <div className="flex flex-wrap gap-3 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto">
             <button
@@ -118,11 +120,11 @@ export default function ProductsPage() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Cari kue..."
-                className="w-full h-12 pl-11 pr-4 bg-surface-container border border-outline text-on-surface font-body-md rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full h-12 pl-11 pr-4 bg-surface-container border border-outline text-on-surface font-body-md rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-shadow"
               />
               <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-[20px]">search</span>
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary">
+                <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors hover:rotate-90 duration-200">
                   <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
               )}
@@ -132,7 +134,7 @@ export default function ProductsPage() {
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="w-full h-12 pl-4 pr-10 appearance-none bg-surface-container border border-outline text-on-surface font-body-md rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                className="w-full h-12 pl-4 pr-10 appearance-none bg-surface-container border border-outline text-on-surface font-body-md rounded-lg focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-shadow"
               >
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -145,19 +147,20 @@ export default function ProductsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-xl overflow-hidden border border-surface-container-low animate-pulse">
-                <div className="h-64 bg-surface-container" />
+              <div key={i} className="bg-surface-container-lowest rounded-xl overflow-hidden border border-surface-container-low"
+                style={{ animationDelay: `${i * 0.05}s` }}>
+                <div className="h-64 skeleton" />
                 <div className="p-6 space-y-3">
-                  <div className="h-5 bg-surface-container rounded w-3/4" />
-                  <div className="h-4 bg-surface-container rounded w-full" />
-                  <div className="h-4 bg-surface-container rounded w-2/3" />
-                  <div className="h-10 bg-surface-container rounded mt-4" />
+                  <div className="h-5 skeleton rounded w-3/4" />
+                  <div className="h-4 skeleton rounded w-full" />
+                  <div className="h-4 skeleton rounded w-2/3" />
+                  <div className="h-10 skeleton rounded mt-4" />
                 </div>
               </div>
             ))}
           </div>
         ) : products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center py-20 px-4 space-y-6">
+          <div className="animate-scale-in flex flex-col items-center justify-center text-center py-20 px-4 space-y-6">
             <span className="material-symbols-outlined text-outline-variant" style={{ fontSize: "64px" }}>
               {searchQuery || selectedCategory ? "sentiment_dissatisfied" : "storefront"}
             </span>
@@ -168,7 +171,7 @@ export default function ProductsPage() {
               <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
                 {searchQuery || selectedCategory
                   ? "Kami tidak dapat menemukan produk yang sesuai. Silakan coba kata kunci lain."
-                  : "Kami sedang menyiapkan produk terbaik untuk Anda. Silakan kunjungi kembali segera!"}
+                  : "Kami sedang menyiapkan produk terbaik untuk Anda."}
               </p>
             </div>
             {(searchQuery || selectedCategory) && (
@@ -182,8 +185,14 @@ export default function ProductsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {products.map(product => (
-              <ProductCard key={product.id} product={product} />
+            {products.map((product, i) => (
+              <div
+                key={product.id}
+                className="animate-fade-up"
+                style={{ animationDelay: `${i * 0.06}s`, animationFillMode: 'both' }}
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         )}

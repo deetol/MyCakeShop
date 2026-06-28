@@ -182,7 +182,7 @@ export default function ProductDetailPage() {
         <section className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop pb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
             {/* Gallery */}
-            <div className="lg:col-span-6 flex flex-col gap-4">
+            <div className="animate-slide-left lg:col-span-6 flex flex-col gap-4">
               <div className="w-full aspect-[4/5] rounded-xl overflow-hidden bg-surface-container relative shadow-sm group">
                 <Image src={activeImage || product.image} alt={product.name} fill priority
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -209,7 +209,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Info */}
-            <div className="lg:col-span-6 flex flex-col pt-4 lg:pt-8">
+            <div className="animate-slide-right animation-delay-100 lg:col-span-6 flex flex-col pt-4 lg:pt-8">
               <span className="font-label-sm text-label-sm text-primary bg-primary-fixed px-3 py-1 rounded-md font-semibold w-fit mb-3">{product.category}</span>
               <h1 className="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-background font-bold mb-2">{product.name}</h1>
 

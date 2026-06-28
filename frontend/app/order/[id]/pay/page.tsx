@@ -234,7 +234,7 @@ export default function PayOrderPage() {
                     
                     {process.env.NODE_ENV === "development" && order?.payment?.id && (
                       <button
-                        onClick={() => handleSimulateQrisSuccess(order.payment.id)}
+                        onClick={() => handleSimulateQrisSuccess(order.payment!.id)}
                         disabled={isSimulating}
                         className="mt-2 bg-tertiary text-on-tertiary hover:bg-tertiary/90 text-xs px-4 py-2.5 rounded-lg font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow-sm disabled:opacity-50"
                       >

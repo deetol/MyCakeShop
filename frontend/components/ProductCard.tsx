@@ -64,15 +64,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <Link href={`/products/${product.slug}`} className="block group">
-      <article className="bg-surface-container-lowest rounded-xl overflow-hidden card-hover flex flex-col border border-surface-container-low relative h-full cursor-pointer">
+    <Link href={`/products/${product.slug}`} className="block group h-full">
+      <article className="bg-surface-container-lowest rounded-xl overflow-hidden flex flex-col border border-surface-container-low relative h-full cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_12px_28px_-5px_rgba(112,62,14,0.15)] hover:border-primary/20">
         {/* Tag Badge */}
         {product.tag && (
-          <div
-            className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-full font-label-sm text-label-sm shadow-sm ${getTagStyle(
-              product.tag
-            )}`}
-          >
+          <div className={`absolute top-4 right-4 z-10 px-3 py-1.5 rounded-full font-label-sm text-label-sm shadow-sm transition-transform duration-300 group-hover:scale-105 ${getTagStyle(product.tag)}`}>
             {product.tag}
           </div>
         )}
@@ -83,15 +79,17 @@ export default function ProductCard({ product }: ProductCardProps) {
             src={product.image}
             alt={product.name}
             fill
-            className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+            className="object-cover object-center transition-transform duration-500 group-hover:scale-108"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
             unoptimized
           />
+          {/* Subtle overlay on hover */}
+          <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors duration-300" />
         </div>
 
         {/* Details Container */}
         <div className="p-6 flex flex-col flex-grow">
-          <h3 className="font-headline-md text-headline-md text-on-surface mb-2 truncate group-hover:text-primary transition-colors">
+          <h3 className="font-headline-md text-headline-md text-on-surface mb-2 truncate group-hover:text-primary transition-colors duration-200">
             {product.name}
           </h3>
           <p className="font-body-md text-body-md text-on-surface-variant mb-3 flex-grow line-clamp-2">
@@ -106,11 +104,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                   const filled = product.ratingAvg! >= s;
                   const half = !filled && product.ratingAvg! >= s - 0.5;
                   return (
-                    <span
-                      key={s}
-                      className="material-symbols-outlined text-[14px] text-primary"
-                      style={{ fontVariationSettings: filled || half ? "'FILL' 1" : "'FILL' 0" }}
-                    >
+                    <span key={s} className="material-symbols-outlined text-[14px] text-primary"
+                      style={{ fontVariationSettings: filled || half ? "'FILL' 1" : "'FILL' 0" }}>
                       star
                     </span>
                   );
@@ -120,18 +115,15 @@ export default function ProductCard({ product }: ProductCardProps) {
               <span className="text-xs text-on-surface-variant">({product.reviewCount})</span>
             </div>
           ) : (
-            <div className="mb-4 h-5" /> // Placeholder agar tinggi card konsisten
+            <div className="mb-4 h-5" />
           )}
 
-          {/* Price Tag */}
+          {/* Price */}
           <div className="flex items-end justify-between mb-6">
             <span className="font-body-lg text-body-lg font-bold text-primary">
               {formatPrice(product.price)}
               {product.unit && (
-                <span className="font-body-md text-body-md text-on-surface-variant font-normal">
-                  {" "}
-                  {product.unit}
-                </span>
+                <span className="font-body-md text-body-md text-on-surface-variant font-normal"> {product.unit}</span>
               )}
             </span>
           </div>
@@ -139,9 +131,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* CTA Button */}
           <button
             onClick={handleAddToCart}
-            className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 hover:bg-primary-container transition-colors active:scale-95 duration-150"
+            className="w-full h-12 bg-primary text-on-primary rounded-lg font-label-sm text-label-sm flex justify-center items-center gap-2 transition-all duration-200 hover:bg-primary-container hover:text-on-primary-container hover:gap-3 hover:shadow-md active:scale-95 group/btn"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span className="material-symbols-outlined text-[18px] transition-transform duration-200 group-hover/btn:rotate-12">
               add_shopping_cart
             </span>
             Tambah ke Keranjang
