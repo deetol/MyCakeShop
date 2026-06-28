@@ -94,9 +94,34 @@ export default function ProductCard({ product }: ProductCardProps) {
           <h3 className="font-headline-md text-headline-md text-on-surface mb-2 truncate group-hover:text-primary transition-colors">
             {product.name}
           </h3>
-          <p className="font-body-md text-body-md text-on-surface-variant mb-4 flex-grow line-clamp-2">
+          <p className="font-body-md text-body-md text-on-surface-variant mb-3 flex-grow line-clamp-2">
             {product.description}
           </p>
+
+          {/* Rating */}
+          {product.ratingAvg !== null && product.reviewCount > 0 ? (
+            <div className="flex items-center gap-1.5 mb-4">
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((s) => {
+                  const filled = product.ratingAvg! >= s;
+                  const half = !filled && product.ratingAvg! >= s - 0.5;
+                  return (
+                    <span
+                      key={s}
+                      className="material-symbols-outlined text-[14px] text-primary"
+                      style={{ fontVariationSettings: filled || half ? "'FILL' 1" : "'FILL' 0" }}
+                    >
+                      star
+                    </span>
+                  );
+                })}
+              </div>
+              <span className="text-xs font-bold text-primary">{product.ratingAvg!.toFixed(1)}</span>
+              <span className="text-xs text-on-surface-variant">({product.reviewCount})</span>
+            </div>
+          ) : (
+            <div className="mb-4 h-5" /> // Placeholder agar tinggi card konsisten
+          )}
 
           {/* Price Tag */}
           <div className="flex items-end justify-between mb-6">

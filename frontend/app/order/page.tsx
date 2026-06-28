@@ -437,12 +437,18 @@ export default function OrdersPage() {
                           )}
                         </div>
 
-                        {/* Beli Lagi */}
+                        {/* Beli Lagi / Tulis Ulasan */}
                         {order.status === 'completed' && (
-                          <Link href="/products" className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-primary-container text-on-primary-container font-bold text-sm hover:bg-primary hover:text-on-primary transition-colors">
-                            <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
-                            Beli Lagi
-                          </Link>
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <Link href="/products" className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg bg-primary-container text-on-primary-container font-bold text-sm hover:bg-primary hover:text-on-primary transition-colors">
+                              <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
+                              Beli Lagi
+                            </Link>
+                            <Link href="/testimonials/create" className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border-2 border-primary text-primary font-bold text-sm hover:bg-primary hover:text-on-primary transition-colors">
+                              <span className="material-symbols-outlined text-[18px]">rate_review</span>
+                              Tulis Ulasan
+                            </Link>
+                          </div>
                         )}
                       </div>
                     )}

@@ -8,12 +8,24 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import ProductCard from "@/components/ProductCard";
 import { fetchProducts, FrontendProduct } from "@/lib/products";
+import { api } from "@/lib/api";
+
+interface HomeReview {
+  id: number;
+  rating: number;
+  comment: string;
+  created_at: string;
+  user: { name: string };
+  product: { id: number; name: string; main_image: string };
+}
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<FrontendProduct[]>([]);
   const [bestsellerProducts, setBestsellerProducts] = useState<FrontendProduct[]>([]);
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
   const [isLoadingBestseller, setIsLoadingBestseller] = useState(true);
+  const [homeReviews, setHomeReviews] = useState<HomeReview[]>([]);
+  const [reviewStats, setReviewStats] = useState<{ total: number; average: number } | null>(null);
 
   // Fetch produk Favorit
   useEffect(() => {
@@ -40,6 +52,16 @@ export default function Home() {
       })
       .catch(() => setBestsellerProducts([]))
       .finally(() => setIsLoadingBestseller(false));
+  }, []);
+
+  // Fetch ulasan terbaru untuk homepage
+  useEffect(() => {
+    api.get<{ items: HomeReview[]; stats: { total: number; average: number } }>("/reviews?per_page=3&sort=latest")
+      .then(res => {
+        setHomeReviews(res.data.items);
+        setReviewStats(res.data.stats);
+      })
+      .catch(() => {});
   }, []);
 
   const formatPrice = (v: number) =>
@@ -177,6 +199,77 @@ export default function Home() {
                   {bestsellerProducts.map(p => <ProductCard key={p.id} product={p} />)}
                 </div>
               )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Testimoni Pelanggan ───────────────────────────────────── */}
+        {homeReviews.length > 0 && (
+          <section className="bg-surface-container-low py-[64px] border-t border-surface-variant">
+            <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-[48px] gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>reviews</span>
+                    <span className="font-label-sm text-label-sm text-primary font-bold uppercase tracking-wider">Ulasan Pelanggan</span>
+                  </div>
+                  <h2 className="font-headline-md text-headline-md text-on-surface font-bold">Yang Mereka Katakan</h2>
+                  <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                    Ulasan nyata dari pelanggan yang sudah merasakan produk kami.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {reviewStats && reviewStats.total > 0 && (
+                    <div className="flex items-center gap-2 bg-surface-container-highest px-3 py-2 rounded-full border border-outline-variant">
+                      <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      <span className="font-bold text-primary text-sm">{reviewStats.average.toFixed(1)}</span>
+                      <span className="text-on-surface-variant text-xs">({reviewStats.total} ulasan)</span>
+                    </div>
+                  )}
+                  <Link
+                    href="/testimonials"
+                    className="flex items-center gap-1 text-primary hover:text-primary-container font-label-sm text-label-sm transition-colors font-bold shrink-0"
+                  >
+                    Lihat Semua
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {homeReviews.map((review) => (
+                  <div
+                    key={review.id}
+                    className="bg-surface-container-lowest rounded-xl border border-surface-container p-6 flex flex-col gap-4"
+                  >
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <span
+                          key={s}
+                          className={`material-symbols-outlined text-sm ${s <= review.rating ? "text-primary" : "text-outline-variant"}`}
+                          style={{ fontVariationSettings: s <= review.rating ? "'FILL' 1" : "'FILL' 0" }}
+                        >
+                          star
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-on-surface text-sm leading-relaxed italic flex-grow">
+                      &ldquo;{review.comment.length > 120 ? review.comment.slice(0, 120) + "…" : review.comment}&rdquo;
+                    </p>
+                    <div className="flex items-center gap-3 pt-2 border-t border-surface-container">
+                      <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+                        <span className="text-on-primary-container font-bold text-xs">{review.user.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-on-surface text-xs truncate">{review.user.name}</p>
+                        <p className="text-[11px] text-on-surface-variant truncate">
+                          Membeli <span className="text-primary font-medium">{review.product.name}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         )}

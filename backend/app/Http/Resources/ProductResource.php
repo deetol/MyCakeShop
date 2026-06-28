@@ -24,6 +24,8 @@ class ProductResource extends JsonResource
             'unit' => $this->unit,
             'tag' => $this->tag,
             'main_image' => $this->main_image,
+            'rating_avg' => $this->rating_avg ? round((float) $this->rating_avg, 1) : null,
+            'review_count' => (int) ($this->review_count ?? 0),
             'category' => new CategoryResource($this->whenLoaded('category')),
             'sizes' => $this->whenLoaded('sizes', function () {
                 return $this->sizes->map(function ($size) {

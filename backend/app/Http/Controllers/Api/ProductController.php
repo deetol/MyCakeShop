@@ -19,7 +19,13 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::with(['category', 'sizes'])
-            ->active();
+            ->active()
+            ->withCount(['reviews as review_count' => function ($q) {
+                $q->where('is_approved', true);
+            }])
+            ->withAvg(['reviews as rating_avg' => function ($q) {
+                $q->where('is_approved', true);
+            }], 'rating');
 
         // Filter by category
         if ($request->has('category')) {
@@ -47,6 +53,9 @@ class ProductController extends Controller
                 break;
             case 'newest':
                 $query->orderBy('created_at', 'desc');
+                break;
+            case 'top_rated':
+                $query->orderByDesc('rating_avg')->orderByDesc('review_count');
                 break;
             case 'recommended':
             default:
@@ -90,6 +99,12 @@ class ProductController extends Controller
     {
         $product = Product::with(['category', 'sizes', 'images'])
             ->active()
+            ->withCount(['reviews as review_count' => function ($q) {
+                $q->where('is_approved', true);
+            }])
+            ->withAvg(['reviews as rating_avg' => function ($q) {
+                $q->where('is_approved', true);
+            }], 'rating')
             ->where('slug', $slug)
             ->first();
 

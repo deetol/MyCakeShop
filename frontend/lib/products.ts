@@ -42,6 +42,16 @@ export interface ApiProduct {
   ingredients: string[] | null;
   allergens: string[] | null;
   is_active: boolean;
+  rating_avg: number | null;
+  review_count: number;
+  rating_distribution?: { 5: number; 4: number; 3: number; 2: number; 1: number };
+  recent_reviews?: {
+    id: number;
+    rating: number;
+    comment: string;
+    created_at: string;
+    user: { name: string };
+  }[];
   category: ApiCategory | null;
   sizes: ApiProductSize[];
   images?: { id: number; image_url: string; order: number }[];
@@ -65,6 +75,16 @@ export interface FrontendProduct {
   sizes: { id: number; name: string; price: number }[];
   gallery: string[];
   isActive: boolean;
+  ratingAvg: number | null;
+  reviewCount: number;
+  ratingDistribution?: { 5: number; 4: number; 3: number; 2: number; 1: number };
+  recentReviews?: {
+    id: number;
+    rating: number;
+    comment: string;
+    created_at: string;
+    user: { name: string };
+  }[];
 }
 
 // Map backend product to frontend shape
@@ -89,6 +109,10 @@ export function mapProduct(p: ApiProduct): FrontendProduct {
     sizes,
     gallery: p.images?.map(i => resolveImageUrl(i.image_url)) || [image],
     isActive: p.is_active,
+    ratingAvg: p.rating_avg ?? null,
+    reviewCount: p.review_count ?? 0,
+    ratingDistribution: p.rating_distribution,
+    recentReviews: p.recent_reviews,
   };
 }
 

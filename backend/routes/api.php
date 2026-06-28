@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\Admin\ProductAdminController;
 use App\Http\Controllers\Api\Admin\OrderAdminController;
 use App\Http\Controllers\Api\Admin\UserAdminController;
@@ -32,6 +33,9 @@ Route::get('/products/{slug}', [ProductController::class, 'show']);
 // Public shipping & payment methods
 Route::get('/shipping-methods', [ShippingMethodController::class, 'index']);
 Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+
+// Public reviews
+Route::get('/reviews', [ReviewController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
@@ -67,6 +71,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/{payment}/upload-proof', [PaymentController::class, 'uploadProof']);
     Route::post('/orders/{order}/create-remaining-payment', [PaymentController::class, 'createRemainingPayment']);
     Route::post('/payments/{payment}/simulate-qris-success', [PaymentController::class, 'simulateQrisSuccess']);
+
+    // Review routes (customer)
+    Route::post('/reviews', [ReviewController::class, 'store']);
+    Route::get('/reviews/reviewable-orders', [ReviewController::class, 'myReviewableOrders']);
+    Route::get('/reviews/reviewable-orders/{orderId}', [ReviewController::class, 'reviewableProducts']);
 });
 
 // Admin only routes

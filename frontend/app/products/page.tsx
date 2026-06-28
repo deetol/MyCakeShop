@@ -53,6 +53,7 @@ export default function ProductsPage() {
 
   const SORT_OPTIONS = [
     { value: "recommended", label: "Urutkan: Rekomendasi" },
+    { value: "top_rated",   label: "Rating Terbaik" },
     { value: "price_asc",   label: "Harga: Rendah ke Tinggi" },
     { value: "price_desc",  label: "Harga: Tinggi ke Rendah" },
     { value: "newest",      label: "Terbaru" },

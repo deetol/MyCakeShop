@@ -1,317 +1,418 @@
 "use client";
 
-import { useState, useRef, DragEvent, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
+import { useAuth } from "@/context/AuthContext";
+import { api, ApiError, ValidationError } from "@/lib/api";
 
-const PRODUCTS_LIST = [
-  "Roti Sisir Klasik",
-  "Lapis Legit Pandan",
-  "Bolu Gulung Keju",
-  "Hampers Hari Raya",
-  "Roti Sobek Cokelat",
-  "Kue Sus Susu",
-  "Roti Tawar Gandum",
-];
+interface ReviewableProduct {
+  product_id: number;
+  product_name: string;
+  main_image: string | null;
+  is_reviewed: boolean;
+}
+
+interface ReviewableOrder {
+  order_id: number;
+  order_number: string;
+  created_at: string;
+  all_reviewed: boolean;
+  products: ReviewableProduct[];
+}
+
+function StarPicker({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const [hovered, setHovered] = useState(0);
+  const active = hovered || value;
+  const labels = ["", "Sangat Buruk", "Buruk", "Cukup", "Baik", "Sangat Baik"];
+
+  return (
+    <div>
+      <div className="flex gap-2">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onChange(s)}
+            onMouseEnter={() => setHovered(s)}
+            onMouseLeave={() => setHovered(0)}
+            className={`material-symbols-outlined text-4xl cursor-pointer transition-all hover:scale-110 active:scale-95 ${
+              s <= active ? "text-primary" : "text-outline-variant"
+            }`}
+            style={{ fontVariationSettings: s <= active ? "'FILL' 1" : "'FILL' 0" }}
+            aria-label={`Beri rating ${s}`}
+          >
+            star
+          </button>
+        ))}
+      </div>
+      {active > 0 && (
+        <p className="mt-1 text-sm font-medium text-primary">{labels[active]}</p>
+      )}
+    </div>
+  );
+}
 
 export default function CreateTestimonialPage() {
-  const [name, setName] = useState("Budi Santoso");
-  const [email, setEmail] = useState("budi.santoso@email.com");
-  const [selectedProduct, setSelectedProduct] = useState("Roti Sisir Klasik");
+  const { user, token, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [orders, setOrders] = useState<ReviewableOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<ReviewableOrder | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ReviewableProduct | null>(null);
   const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [message, setMessage] = useState("");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [consent, setConsent] = useState(false);
+  const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setUploadedFile(e.dataTransfer.files[0]);
+  const fetchOrders = useCallback(async () => {
+    if (!token) return;
+    setLoadingOrders(true);
+    try {
+      const res = await api.get<ReviewableOrder[]>("/reviews/reviewable-orders", token);
+      setOrders(res.data);
+    } catch {
+      // silent — tampilkan empty state
+    } finally {
+      setLoadingOrders(false);
     }
-  };
+  }, [token]);
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setUploadedFile(e.target.files[0]);
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login?redirect=/testimonials/create");
     }
-  };
+  }, [authLoading, user, router]);
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
+  useEffect(() => {
+    if (user && token) fetchOrders();
+  }, [user, token, fetchOrders]);
 
-  const handleRemoveFile = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setUploadedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedOrder || !selectedProduct) return;
     if (rating === 0) {
-      alert("Silakan berikan rating bintang Anda terlebih dahulu.");
+      setErrorMsg("Silakan pilih rating bintang terlebih dahulu.");
       return;
     }
 
     setIsSubmitting(true);
+    setErrorMsg("");
 
-    setTimeout(() => {
-      alert("Terima kasih! Testimoni Anda telah terkirim. Voucher diskon 10% telah dikirim ke email Anda.");
-      setIsSubmitting(false);
-      setName("Budi Santoso");
-      setEmail("budi.santoso@email.com");
-      setSelectedProduct("Roti Sisir Klasik");
+    try {
+      await api.post(
+        "/reviews",
+        {
+          order_id: selectedOrder.order_id,
+          product_id: selectedProduct.product_id,
+          rating,
+          comment,
+        },
+        token ?? undefined
+      );
+      setSuccess(true);
+      // refresh daftar order setelah submit
+      await fetchOrders();
+      // reset form
       setRating(0);
-      setHoveredRating(0);
-      setMessage("");
-      setUploadedFile(null);
-      setConsent(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      setComment("");
+      setSelectedProduct(null);
+    } catch (err) {
+      if (err instanceof ValidationError) {
+        setErrorMsg(err.getFirstError());
+      } else if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Terjadi kesalahan. Silakan coba lagi.");
       }
-    }, 1500);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const activeRating = hoveredRating || rating;
+  if (authLoading) {
+    return (
+      <div className="bg-background min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <span className="material-symbols-outlined animate-spin text-4xl text-primary">refresh</span>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   return (
     <div className="bg-background text-on-background min-h-screen flex flex-col">
-      {/* Shared Header Navigation */}
       <Navbar />
-
-      <main className="flex-grow w-full pt-12 pb-24 px-margin-mobile md:px-0">
-        <div className="max-w-4xl mx-auto">
-          {/* Header Section */}
-          <header className="text-center mb-16">
-            <h1 className="font-display-lg text-display-lg md:text-display-lg text-primary mb-4 font-bold">
-              Bagikan Cerita Manis Anda
-            </h1>
-            <p className="text-body-lg font-body-lg text-on-surface-variant max-w-2xl mx-auto">
-              Terima kasih telah menjadi bagian dari perjalanan kami. Setiap cerita Anda memberikan semangat bagi kami untuk terus menyajikan kehangatan di setiap gigitan.
+      <main className="flex-grow w-full py-12 px-margin-mobile md:px-margin-desktop">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <Link
+              href="/testimonials"
+              className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors mb-4"
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              Kembali ke Ulasan
+            </Link>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface font-bold">Tulis Ulasan</h1>
+            <p className="text-on-surface-variant mt-1">
+              Bagikan pengalamanmu untuk membantu pelanggan lain.
             </p>
-          </header>
+          </div>
 
-          {/* Testimonial Form Container */}
-          <div className="bg-surface-container-low rounded-xl shadow-sm overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-0 border border-surface-container">
-            {/* Left Side: Visual/Context */}
-            <div className="lg:col-span-4 relative hidden lg:block overflow-hidden">
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{
-                  backgroundImage: "url('https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600')",
-                }}
-              ></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-on-background/70 to-transparent flex flex-col justify-end p-8">
-                <div className="text-surface-bright italic font-body-md mb-2 text-sm">
-                  &ldquo;Setiap kue punya cerita, dan kami ingin mendengar cerita Anda.&rdquo;
+          {/* Success state */}
+          {success && (
+            <div className="bg-tertiary-container text-on-tertiary-container rounded-xl p-5 mb-6 flex items-start gap-3">
+              <span className="material-symbols-outlined text-2xl shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                check_circle
+              </span>
+              <div>
+                <p className="font-semibold">Ulasan berhasil dikirim!</p>
+                <p className="text-sm mt-0.5">Terima kasih telah berbagi pengalamanmu. Ulasan kamu akan segera tampil.</p>
+                <div className="flex gap-3 mt-3">
+                  <button
+                    onClick={() => setSuccess(false)}
+                    className="text-sm font-semibold underline"
+                  >
+                    Tulis ulasan lain
+                  </button>
+                  <Link href="/testimonials" className="text-sm font-semibold underline">
+                    Lihat semua ulasan
+                  </Link>
                 </div>
-                <div className="h-1 w-12 bg-primary-fixed-dim rounded-full"></div>
               </div>
             </div>
+          )}
 
-            {/* Right Side: The Form */}
-            <div className="lg:col-span-8 p-8 md:p-12 bg-surface-container-lowest">
-              <form onSubmit={handleSubmit} className="space-y-8" id="testimonialForm">
-                {/* User Identity */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-                  <div className="space-y-2">
-                    <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold" htmlFor="name">
-                      Nama Lengkap
-                    </label>
-                    <input
-                      className="w-full h-12 px-4 rounded-lg bg-surface-container-low border-none focus:ring-2 focus:ring-primary text-on-surface font-body-md"
-                      id="name"
-                      required
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold" htmlFor="email">
-                      Email
-                    </label>
-                    <input
-                      className="w-full h-12 px-4 rounded-lg bg-surface-container-low border-none focus:ring-2 focus:ring-primary text-on-surface font-body-md"
-                      id="email"
-                      required
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
+          {/* Loading orders */}
+          {loadingOrders && (
+            <div className="bg-surface-container-lowest rounded-xl border border-surface-container p-8 text-center">
+              <span className="material-symbols-outlined animate-spin text-3xl text-primary block mb-2">refresh</span>
+              <p className="text-on-surface-variant text-sm">Memuat daftar pesanan...</p>
+            </div>
+          )}
 
-                {/* Product & Rating */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter items-end">
-                  <div className="space-y-2">
-                    <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold" htmlFor="product">
-                      Produk yang Dibeli
-                    </label>
-                    <div className="relative">
-                      <select
-                        className="w-full h-12 pl-4 pr-10 rounded-lg bg-surface-container-low border-none appearance-none focus:ring-2 focus:ring-primary text-on-surface font-body-md cursor-pointer"
-                        id="product"
-                        value={selectedProduct}
-                        onChange={(e) => setSelectedProduct(e.target.value)}
-                      >
-                        <option value="">Pilih produk...</option>
-                        {PRODUCTS_LIST.map((prod) => (
-                          <option key={prod} value={prod}>
-                            {prod}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="material-symbols-outlined absolute right-3 top-3 pointer-events-none text-outline">
-                        expand_more
-                      </span>
-                    </div>
-                  </div>
+          {/* No reviewable orders */}
+          {!loadingOrders && orders.length === 0 && (
+            <div className="bg-surface-container-lowest rounded-xl border border-surface-container p-10 text-center">
+              <span className="material-symbols-outlined text-5xl text-outline block mb-3">shopping_bag</span>
+              <p className="font-headline-sm text-on-surface font-bold mb-1">Belum ada pesanan selesai</p>
+              <p className="text-on-surface-variant text-sm max-w-xs mx-auto mb-6">
+                Kamu hanya bisa memberikan ulasan untuk produk yang sudah kamu pesan dan diterima.
+              </p>
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[18px]">storefront</span>
+                Belanja Sekarang
+              </Link>
+            </div>
+          )}
 
-                  <div className="space-y-2">
-                    <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold">
-                      Rating Anda
-                    </label>
-                    <div className="flex gap-2 h-12 items-center" id="starContainer">
-                      {[1, 2, 3, 4, 5].map((value) => {
-                        const isStarred = value <= activeRating;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            className={`material-symbols-outlined text-3xl cursor-pointer transition-all hover:scale-110 active:scale-95 ${
-                              isStarred ? "text-surface-tint" : "text-outline-variant"
-                            }`}
-                            style={{ fontVariationSettings: isStarred ? "'FILL' 1" : "'FILL' 0" }}
-                            onClick={() => setRating(value)}
-                            onMouseEnter={() => setHoveredRating(value)}
-                            onMouseLeave={() => setHoveredRating(0)}
-                          >
-                            star
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Testimonial Message */}
+          {/* Form */}
+          {!loadingOrders && orders.length > 0 && (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Step 1: Pilih Order */}
+              <div className="bg-surface-container-lowest rounded-xl border border-surface-container p-6">
+                <h2 className="font-title-md text-on-surface font-semibold mb-4 flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-xs flex items-center justify-center font-bold">1</span>
+                  Pilih Pesanan
+                </h2>
                 <div className="space-y-2">
-                  <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold" htmlFor="message">
-                    Pesan Testimoni
-                  </label>
-                  <textarea
-                    className="w-full p-4 rounded-lg bg-surface-container-low border-none focus:ring-2 focus:ring-primary text-on-surface font-body-md custom-scrollbar resize-none"
-                    id="message"
-                    placeholder="Ceritakan pengalaman Anda saat mencicipi kue kami..."
-                    required
-                    rows={4}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                  ></textarea>
-                </div>
-
-                {/* Photo Upload Section */}
-                <div className="space-y-2">
-                  <label className="block font-label-sm text-on-surface-variant uppercase tracking-wider text-xs font-semibold">
-                    Unggah Foto (Opsional)
-                  </label>
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={triggerFileInput}
-                    className="border-2 border-dashed border-outline-variant hover:border-primary rounded-lg p-6 text-center cursor-pointer transition-colors bg-surface-container-low flex flex-col items-center justify-center min-h-[140px]"
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept="image/*"
-                    />
-                    {uploadedFile ? (
-                      <div className="flex flex-col items-center">
-                        <span className="material-symbols-outlined text-4xl text-tertiary">check_circle</span>
-                        <p className="font-body-md text-tertiary font-bold mt-2 text-sm">{uploadedFile.name}</p>
-                        <p className="text-[10px] uppercase tracking-widest text-outline mt-1">Berhasil diunggah</p>
-                        <button
-                          type="button"
-                          onClick={handleRemoveFile}
-                          className="mt-3 text-xs text-error hover:underline cursor-pointer"
+                  {orders.map((order) => (
+                    <button
+                      key={order.order_id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setSelectedProduct(null);
+                        setSuccess(false);
+                        setErrorMsg("");
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-lg border transition-all ${
+                        selectedOrder?.order_id === order.order_id
+                          ? "border-primary bg-primary-container/20"
+                          : "border-surface-container hover:border-primary/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-on-surface text-sm">{order.order_number}</p>
+                          <p className="text-xs text-on-surface-variant mt-0.5">{order.created_at}</p>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            selectedOrder?.order_id === order.order_id
+                              ? "bg-primary text-on-primary"
+                              : "bg-surface-container text-on-surface-variant"
+                          }`}
                         >
-                          Hapus Foto
-                        </button>
+                          {order.products.filter((p) => !p.is_reviewed).length} produk belum diulas
+                        </span>
                       </div>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-4xl text-outline mb-2">add_a_photo</span>
-                        <p className="font-body-md text-on-surface-variant text-sm">Klik atau tarik foto ke sini</p>
-                        <p className="text-[10px] uppercase tracking-widest text-outline mt-1">PNG, JPG up to 5MB</p>
-                      </>
-                    )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step 2: Pilih Produk */}
+              {selectedOrder && (
+                <div className="bg-surface-container-lowest rounded-xl border border-surface-container p-6">
+                  <h2 className="font-title-md text-on-surface font-semibold mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-xs flex items-center justify-center font-bold">2</span>
+                    Pilih Produk
+                  </h2>
+                  <div className="space-y-2">
+                    {selectedOrder.products.map((product) => (
+                      <button
+                        key={product.product_id}
+                        type="button"
+                        disabled={product.is_reviewed}
+                        onClick={() => {
+                          if (!product.is_reviewed) {
+                            setSelectedProduct(product);
+                            setSuccess(false);
+                            setErrorMsg("");
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-lg border transition-all flex items-center gap-3 ${
+                          product.is_reviewed
+                            ? "border-surface-container opacity-50 cursor-not-allowed"
+                            : selectedProduct?.product_id === product.product_id
+                            ? "border-primary bg-primary-container/20"
+                            : "border-surface-container hover:border-primary/50"
+                        }`}
+                      >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container shrink-0">
+                          {product.main_image ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={product.main_image}
+                              alt={product.product_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="material-symbols-outlined text-outline text-lg">cake</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-on-surface text-sm truncate">{product.product_name}</p>
+                        </div>
+                        {product.is_reviewed && (
+                          <span className="flex items-center gap-1 text-xs text-tertiary shrink-0">
+                            <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            Sudah diulas
+                          </span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {/* Submit Section */}
-                <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-6">
-                  <div className="flex items-center gap-3">
-                    <input
-                      className="rounded text-primary focus:ring-primary bg-surface-container border-none h-5 w-5 cursor-pointer"
-                      id="consent"
-                      required
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
-                    />
-                    <label className="font-body-md text-on-surface-variant text-sm cursor-pointer" htmlFor="consent">
-                      Saya setuju testimoni ini ditampilkan di website.
-                    </label>
+              {/* Step 3: Rating & Komentar */}
+              {selectedProduct && (
+                <div className="bg-surface-container-lowest rounded-xl border border-surface-container p-6 space-y-5">
+                  <h2 className="font-title-md text-on-surface font-semibold flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-on-primary text-xs flex items-center justify-center font-bold">3</span>
+                    Berikan Penilaianmu
+                  </h2>
+
+                  <div className="bg-surface-container rounded-lg px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-container-low shrink-0">
+                      {selectedProduct.main_image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={selectedProduct.main_image}
+                          alt={selectedProduct.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="material-symbols-outlined text-outline">cake</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-semibold text-on-surface text-sm">{selectedProduct.product_name}</p>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">
+                      Rating
+                    </label>
+                    <StarPicker value={rating} onChange={setRating} />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="comment"
+                      className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2"
+                    >
+                      Ulasan kamu
+                    </label>
+                    <textarea
+                      id="comment"
+                      required
+                      minLength={10}
+                      maxLength={1000}
+                      rows={4}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Ceritakan pengalaman kamu menikmati produk ini..."
+                      className="w-full p-4 rounded-lg bg-surface-container-low border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary text-on-surface text-sm resize-none"
+                    />
+                    <p className="text-right text-xs text-on-surface-variant mt-1">{comment.length}/1000</p>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="flex items-center gap-2 text-error text-sm bg-error-container/20 rounded-lg px-4 py-3">
+                      <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+                      <span>{errorMsg}</span>
+                    </div>
+                  )}
+
                   <button
-                    className="w-full sm:w-auto px-10 h-14 bg-primary text-on-primary font-headline-md rounded-full shadow-md hover:bg-primary-container hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-bold disabled:opacity-75 disabled:cursor-not-allowed"
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || rating === 0}
+                    className="w-full h-12 bg-primary text-on-primary rounded-full font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                   >
                     {isSubmitting ? (
                       <>
-                        <span className="material-symbols-outlined animate-spin">refresh</span>
-                        <span>Mengirim...</span>
+                        <span className="material-symbols-outlined animate-spin text-[20px]">refresh</span>
+                        Mengirim...
                       </>
                     ) : (
                       <>
-                        <span>Kirim Testimoni</span>
-                        <span className="material-symbols-outlined">send</span>
+                        <span className="material-symbols-outlined text-[20px]">send</span>
+                        Kirim Ulasan
                       </>
                     )}
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
+              )}
+            </form>
+          )}
         </div>
       </main>
-
-      {/* Shared Footer */}
       <Footer />
-
-      {/* Slide-over Drawer */}
       <CartDrawer />
     </div>
   );

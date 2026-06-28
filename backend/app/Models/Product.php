@@ -94,4 +94,12 @@ class Product extends Model
     {
         return $query->where('tag', $tag);
     }
+
+    /**
+     * Get all approved reviews for this product
+     */
+    public function reviews()
+    {
+        return $this->hasMany(\App\Models\Review::class);
+    }
 }

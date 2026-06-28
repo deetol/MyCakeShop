@@ -329,3 +329,33 @@ export interface PaginatedResponse<T> {
     to: number;
   };
 }
+
+export interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  created_at: string;
+  user: { name: string };
+  product: { id: number; name: string; main_image: string };
+}
+
+export interface ReviewStats {
+  total: number;
+  average: number;
+  star5: number;
+  star4: number;
+  star3: number;
+  star2: number;
+  star1: number;
+}
+
+export interface ReviewsApiData {
+  items: Review[];
+  pagination: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+  };
+  stats: ReviewStats;
+}
