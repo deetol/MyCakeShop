@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { api, resolveStorageUrl } from "@/lib/api";
 
 export interface CartItem {
   id: string;          // product_id or "productId-sizeName"
@@ -52,7 +52,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           ? `${item.product.name} (${item.size.size_name})`
           : item.product.name,
         price: item.price,           // root-level price from CartItemResource
-        image: item.product.main_image || '/placeholder-cake.svg',
+        image: resolveStorageUrl(item.product.main_image) || '/placeholder-cake.svg',
         quantity: item.quantity,
         stock: item.product.stock,
         productId: item.product.id,
