@@ -70,6 +70,14 @@ Route::middleware(['auth', 'role:admin'])
     });
 
 // Fallback storage route to serve files directly from app/public
+Route::get('/storage-file/{path}', function ($path) {
+    $filePath = 'public/' . $path;
+    if (!Illuminate\Support\Facades\Storage::disk('local')->exists($filePath)) {
+        abort(404);
+    }
+    return response()->file(storage_path('app/' . $filePath));
+})->where('path', '.*');
+
 Route::get('/storage/{path}', function ($path) {
     $filePath = 'public/' . $path;
     if (!Illuminate\Support\Facades\Storage::disk('local')->exists($filePath)) {
