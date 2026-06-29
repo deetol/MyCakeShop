@@ -29,18 +29,19 @@ RUN docker-php-ext-install \
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# Create system user to run Composer and Artisan commands
-RUN groupadd -g 1000 www && \
-    useradd -u 1000 -ms /bin/bash -g www www
+# Copy project
+COPY . .
 
-# Copy existing application directory permissions
-COPY --chown=www:www . .
+# ⭐ Install Laravel dependencies
+RUN composer install --no-dev --optimize-autoloader
 
-# Change current user to www
-USER www
+# Permission
+RUN chown -R www-data:www-data /var/www/html
+
+USER www-data
 
 EXPOSE 9000
+
 CMD ["php-fpm"]
