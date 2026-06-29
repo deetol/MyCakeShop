@@ -68,3 +68,12 @@ Route::middleware(['auth', 'role:admin'])
     ->get('/admin', function () {
         return 'Admin Panel';
     });
+
+// Fallback storage route to serve files directly from app/public
+Route::get('/storage/{path}', function ($path) {
+    $filePath = 'public/' . $path;
+    if (!Illuminate\Support\Facades\Storage::disk('local')->exists($filePath)) {
+        abort(404);
+    }
+    return response()->file(storage_path('app/' . $filePath));
+})->where('path', '.*');
