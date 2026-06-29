@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
-import { api, ApiError, ValidationError } from "@/lib/api";
+import { api, ApiError, ValidationError, resolveStorageUrl } from "@/lib/api";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 interface Category { id: number; name: string; slug: string; }
@@ -382,7 +382,7 @@ export default function EditProductPage() {
                     ) : mainImage && !imagePreviewError ? (
                       <>
                         <Image
-                          src={mainImage}
+                          src={resolveStorageUrl(mainImage)}
                           alt={name}
                           fill
                           className="object-cover"

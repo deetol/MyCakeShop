@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { api, resolveStorageUrl } from "@/lib/api";
 import AdminLayout from "@/components/admin/AdminLayout";
 import ProductFormModal from "@/components/admin/ProductFormModal";
 
@@ -192,7 +192,7 @@ export default function AdminProductsPage() {
               <div className="col-span-1">
                 <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container relative flex-shrink-0">
                   {product.main_image ? (
-                    <Image src={product.main_image} alt={product.name} fill className={`object-cover ${!product.is_active ? "grayscale" : ""}`} unoptimized />
+                    <Image src={resolveStorageUrl(product.main_image)} alt={product.name} fill className={`object-cover ${!product.is_active ? "grayscale" : ""}`} unoptimized />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <span className="material-symbols-outlined text-on-surface-variant text-2xl">bakery_dining</span>

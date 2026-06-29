@@ -13,6 +13,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 export function resolveStorageUrl(path: string | null | undefined): string {
   if (!path) return '';
+  
+  // If it's a full URL containing '/storage/', convert it to use '/api/file/' to bypass Nginx limitations
+  if (path.includes('/storage/')) {
+    const parts = path.split('/storage/');
+    const relativePath = parts[parts.length - 1];
+    return `${API_URL}/file/${relativePath}`;
+  }
+  
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   // Serve through /api/file/ route (same API path that login/orders use, guaranteed to work)
   return `${API_URL}/file/${path}`;
