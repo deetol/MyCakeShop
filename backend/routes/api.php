@@ -22,13 +22,6 @@ Route::get('/test', function () {
     ]);
 });
 
-Route::get('/debug-php', function () {
-    ob_start();
-    phpinfo();
-    $info = ob_get_clean();
-    return response($info)->header('Content-Type', 'text/html');
-});
-
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
