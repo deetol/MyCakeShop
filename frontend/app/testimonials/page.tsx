@@ -6,7 +6,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
-import { api } from "@/lib/api";
+import { api, resolveStorageUrl } from "@/lib/api";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 interface Review {
@@ -102,7 +102,7 @@ function ReviewCard({ review }: { review: Review }) {
       <div className="flex items-center gap-2.5 px-3 py-2.5 bg-surface-container rounded-xl">
         <div className="w-9 h-9 rounded-lg overflow-hidden bg-surface-container-high shrink-0 relative">
           {review.product.main_image ? (
-            <Image src={review.product.main_image} alt={review.product.name}
+            <Image src={resolveStorageUrl(review.product.main_image)} alt={review.product.name}
               fill className="object-cover" unoptimized sizes="36px" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
