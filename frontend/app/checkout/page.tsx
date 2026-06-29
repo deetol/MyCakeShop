@@ -266,6 +266,7 @@ export default function CheckoutPage() {
   const displayDp = createdOrder ? Number(createdOrder.dp_amount) : dpAmount;
   const displayRemaining = createdOrder ? Number(createdOrder.remaining_amount) : remainingAmount;
   const displayPaymentType = createdOrder ? createdOrder.payment_type : paymentTypeChoice;
+  const displayAmountToPay = displayPaymentType === "dp" ? displayDp : displayTotal;
 
   // ── Submit order ───────────────────────────────────────────────────────────
   const handlePay = async () => {
@@ -459,12 +460,12 @@ export default function CheckoutPage() {
                 ) : (
                   <div className="flex flex-col items-center text-center space-y-4">
                     <p className="font-body-md text-on-surface-variant">
-                      Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                      {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
+                      Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(displayAmountToPay)}</strong>
+                      {displayPaymentType === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
                     </p>
                     <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (createdOrder.payment?.id || "") + "_" + amountToPay)}`} 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (createdOrder.payment?.id || "") + "_" + displayAmountToPay)}`} 
                         alt="QRIS Mock" 
                         className="w-full h-full object-contain" 
                       />
@@ -495,8 +496,8 @@ export default function CheckoutPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Transfer ke {selectedPayment?.category === "bank_transfer" ? "rekening" : "nomor"} {selectedPayment?.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
+                    Transfer ke {selectedPayment?.category === "bank_transfer" ? "rekening" : "nomor"} {selectedPayment?.name} sebesar <strong className="text-primary">{formatPrice(displayAmountToPay)}</strong>
+                    {displayPaymentType === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
                   </p>
                   
                   {selectedPayment?.category === "bank_transfer" ? (
