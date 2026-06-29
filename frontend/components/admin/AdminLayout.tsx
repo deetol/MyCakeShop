@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -16,11 +16,22 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="bg-surface-container-low text-on-surface font-body-md min-h-screen flex">
+      {/* Mobile backdrop */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+        />
+      )}
+
       {/* Sidebar */}
-      <nav className="h-screen w-64 fixed left-0 top-0 bg-surface-container-low flex flex-col py-6 px-4 border-r border-outline-variant z-20">
+      <nav className={`h-screen w-64 fixed left-0 top-0 bg-surface-container-low flex flex-col py-6 px-4 border-r border-outline-variant z-40 transition-transform duration-300 ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      } lg:z-20`}>
         {/* Brand */}
         <div className="mb-8 px-4">
           <h1 className="font-headline-md text-headline-md font-bold text-primary">MyCakeShop</h1>
@@ -80,10 +91,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* Main */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
         {/* TopBar */}
-        <header className="bg-surface shadow-sm flex justify-between items-center h-16 px-10 sticky top-0 z-10 border-b border-outline-variant/30">
-          <div className="flex-1 max-w-md relative">
+        <header className="bg-surface shadow-sm flex items-center h-16 px-4 md:px-10 sticky top-0 z-10 border-b border-outline-variant/30">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="lg:hidden p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-high transition-colors mr-2 flex items-center justify-center shrink-0 animate-fade-in"
+          >
+            <span className="material-symbols-outlined text-[24px]">menu</span>
+          </button>
+
+          <div className="flex-grow max-w-md relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
             <input
               className="w-full bg-surface-container-low border border-outline-variant rounded-full py-2 pl-10 pr-4 text-sm text-on-surface focus:outline-none focus:border-primary transition-colors"
@@ -91,7 +109,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               type="text"
             />
           </div>
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-3 ml-auto shrink-0">
             <button className="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container-high transition-colors">
               <span className="material-symbols-outlined text-[20px]">notifications</span>
             </button>
@@ -101,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <main className="flex-1 p-10 w-full max-w-[1400px] mx-auto">
+        <main className="flex-1 p-4 md:p-10 w-full max-w-[1400px] mx-auto">
           {children}
         </main>
       </div>

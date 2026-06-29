@@ -40,10 +40,10 @@ export default function Navbar() {
               width={140}
               height={140}
               priority
-              className="object-contain"
+              className="object-contain w-20 sm:w-[140px] h-auto"
             />
 
-            <span className="text-display-lg font-bold text-primary tracking-tight">
+            <span className="hidden sm:block text-display-lg font-bold text-primary tracking-tight">
               MyCakeShop
             </span>
           </Link>
