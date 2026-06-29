@@ -26,6 +26,8 @@ type AuthContextType = {
 const AuthContext =
   createContext<AuthContextType | null>(null);
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
 export function AuthProvider({
   children,
 }: {
@@ -75,7 +77,7 @@ export function AuthProvider({
 
   try {
     await fetch(
-      "http://127.0.0.1:8000/api/logout",
+      `${API_URL}/logout`,
       {
         method: "POST",
         headers: {
