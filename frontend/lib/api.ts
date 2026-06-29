@@ -11,6 +11,13 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
+export function resolveStorageUrl(path: string | null | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  const storageUrl = API_URL.replace(/\/api$/, '') + '/storage';
+  return `${storageUrl}/${path}`;
+}
+
 interface ApiOptions extends RequestInit {
   token?: string;
 }

@@ -7,7 +7,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
-import { api } from "@/lib/api";
+import { api, resolveStorageUrl } from "@/lib/api";
 
 const BANK_TRANSFER = [
   { id: "bca",     name: "BCA",     icon: "account_balance",        accountNumber: "8012-3456-78",       accountName: "PT MyCakeShop Indonesia" },
@@ -101,9 +101,7 @@ export default function PayOrderPage() {
   };
 
   function resolveProofUrl(path: string | null | undefined): string {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
+    return resolveStorageUrl(path);
   }
 
   const fetchOrder = useCallback(async () => {

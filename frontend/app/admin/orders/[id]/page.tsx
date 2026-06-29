@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, resolveStorageUrl } from "@/lib/api";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -507,11 +507,11 @@ export default function OrderDetailPage() {
                     <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide">Bukti Pembayaran</p>
                     <div className="relative w-full h-48 rounded-lg overflow-hidden border border-outline bg-surface-container-lowest">
                       <Image
-                        src={`http://127.0.0.1:8000/storage/${order.payment.payment_proof}`}
+                        src={resolveStorageUrl(order.payment.payment_proof)}
                         alt="Bukti Pembayaran"
                         fill
                         className="object-contain cursor-pointer"
-                        onClick={() => window.open(`http://127.0.0.1:8000/storage/${order.payment!.payment_proof}`, '_blank')}
+                        onClick={() => window.open(resolveStorageUrl(order.payment!.payment_proof), '_blank')}
                         title="Klik untuk membuka di tab baru"
                         unoptimized
                       />

@@ -7,7 +7,7 @@ import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, resolveStorageUrl } from "@/lib/api";
 
 // Reuse payment options from checkout
 const BANK_TRANSFER = [
@@ -104,9 +104,7 @@ export default function PayRemainingPage() {
   };
 
   function resolveProofUrl(path: string | null | undefined): string {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
+    return resolveStorageUrl(path);
   }
 
   const fetchOrder = useCallback(async () => {
