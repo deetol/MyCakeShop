@@ -22,6 +22,15 @@ Route::get('/test', function () {
     ]);
 });
 
+// Serve uploaded files from storage/app/public
+Route::get('/file/{path}', function ($path) {
+    $absolutePath = storage_path('app/public/' . $path);
+    if (!file_exists($absolutePath)) {
+        return response()->json(['error' => 'File not found'], 404);
+    }
+    return response()->file($absolutePath);
+})->where('path', '.*');
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 

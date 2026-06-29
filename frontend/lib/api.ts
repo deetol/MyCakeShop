@@ -14,8 +14,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 export function resolveStorageUrl(path: string | null | undefined): string {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const storageUrl = API_URL.replace(/\/api$/, '') + '/storage-file';
-  return `${storageUrl}/${path}`;
+  // Serve through /api/file/ route (same API path that login/orders use, guaranteed to work)
+  return `${API_URL}/file/${path}`;
 }
 
 interface ApiOptions extends RequestInit {
