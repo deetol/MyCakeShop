@@ -69,19 +69,19 @@ Route::middleware(['auth', 'role:admin'])
         return 'Admin Panel';
     });
 
-// Fallback storage route to serve files directly from app/public
+// Serve uploaded files directly from storage/app/public (bypasses symlink requirement)
 Route::get('/storage-file/{path}', function ($path) {
-    $filePath = 'public/' . $path;
-    if (!Illuminate\Support\Facades\Storage::disk('local')->exists($filePath)) {
+    $absolutePath = storage_path('app/public/' . $path);
+    if (!file_exists($absolutePath)) {
         abort(404);
     }
-    return response()->file(storage_path('app/' . $filePath));
+    return response()->file($absolutePath);
 })->where('path', '.*');
 
 Route::get('/storage/{path}', function ($path) {
-    $filePath = 'public/' . $path;
-    if (!Illuminate\Support\Facades\Storage::disk('local')->exists($filePath)) {
+    $absolutePath = storage_path('app/public/' . $path);
+    if (!file_exists($absolutePath)) {
         abort(404);
     }
-    return response()->file(storage_path('app/' . $filePath));
+    return response()->file($absolutePath);
 })->where('path', '.*');
