@@ -35,6 +35,27 @@ class CategorySeeder extends Seeder
                 'image' => null,
                 'is_active' => true,
             ],
+            [
+                'name' => 'Roti',
+                'slug' => 'roti',
+                'description' => 'Koleksi roti lezat',
+                'image' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Kue',
+                'slug' => 'kue',
+                'description' => 'Aneka kue manis',
+                'image' => null,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Pastry',
+                'slug' => 'pastry',
+                'description' => 'Pastry renyah dan gurih',
+                'image' => null,
+                'is_active' => true,
+            ],
         ];
 
         foreach ($categories as $category) {

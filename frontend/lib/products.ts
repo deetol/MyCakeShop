@@ -3,6 +3,8 @@
  * All product data comes from the backend API — no static files.
  */
 
+import { resolveStorageUrl } from './api';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 
 // Helper: convert a raw main_image value to a usable URL
@@ -10,9 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
 // If it's a storage path, prepend APP_URL/storage
 export function resolveImageUrl(rawUrl: string | null | undefined): string {
   if (!rawUrl) return '/placeholder-cake.svg';
-  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
-  // Storage path like "products/xxx.jpg"
-  return `http://127.0.0.1:8000/storage/${rawUrl}`;
+  return resolveStorageUrl(rawUrl);
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

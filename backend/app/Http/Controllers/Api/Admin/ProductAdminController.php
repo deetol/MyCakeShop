@@ -25,12 +25,13 @@ class ProductAdminController extends Controller
         $file = $request->file('image');
         $filename = 'products/' . Str::uuid() . '.' . $file->getClientOriginalExtension();
 
-        // Store in public disk → accessible at APP_URL/storage/products/xxx.jpg
+        // Store in public disk
         Storage::disk('public')->putFileAs('products', $file, basename($filename));
 
-        $url = Storage::disk('public')->url($filename);
+        // Return relative path (e.g. 'products/uuid.jpg') instead of full URL, same as payment proof
+        $relativePath = 'products/' . basename($filename);
 
-        return $this->successResponse(['url' => $url], 'Image uploaded successfully');
+        return $this->successResponse(['url' => $relativePath], 'Image uploaded successfully');
     }
 
     /**

@@ -17,14 +17,14 @@ class ShippingMethodSeeder extends Seeder
             [
                 'name' => 'Kurir Instan',
                 'description' => 'Pengiriman cepat dalam kota',
-                'cost' => 15000,
+                'cost' => 25000,
                 'estimated_time' => 'Maks 3 jam',
                 'is_active' => true,
             ],
             [
                 'name' => 'Kurir Sameday',
                 'description' => 'Pengiriman hari yang sama',
-                'cost' => 10000,
+                'cost' => 15000,
                 'estimated_time' => 'Hari yang sama',
                 'is_active' => true,
             ],

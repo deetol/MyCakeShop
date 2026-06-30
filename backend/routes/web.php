@@ -68,3 +68,20 @@ Route::middleware(['auth', 'role:admin'])
     ->get('/admin', function () {
         return 'Admin Panel';
     });
+
+// Serve uploaded files directly from storage/app/public (bypasses symlink requirement)
+Route::get('/storage-file/{path}', function ($path) {
+    $absolutePath = storage_path('app/public/' . $path);
+    if (!file_exists($absolutePath)) {
+        abort(404);
+    }
+    return response()->file($absolutePath);
+})->where('path', '.*');
+
+Route::get('/storage/{path}', function ($path) {
+    $absolutePath = storage_path('app/public/' . $path);
+    if (!file_exists($absolutePath)) {
+        abort(404);
+    }
+    return response()->file($absolutePath);
+})->where('path', '.*');

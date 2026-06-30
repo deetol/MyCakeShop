@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import Footer from "@/components/Footer";
-import { api, ApiError, ValidationError } from "@/lib/api";
+import { api, ApiError, ValidationError, resolveStorageUrl } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,9 +198,7 @@ export default function CheckoutPage() {
   };
 
   function resolveProofUrl(path: string | null | undefined): string {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    return `http://127.0.0.1:8000/storage/${path}`;
+    return resolveStorageUrl(path);
   }
 
   // ── Auth guard ────────────────────────────────────────────────────────────
@@ -262,6 +260,13 @@ export default function CheckoutPage() {
   const remainingAmount = totalPayment - dpAmount;
   const amountToPay = paymentTypeChoice === "dp" ? dpAmount : totalPayment;
   const selectedAddress = addresses.find(a => a.id === selectedAddressId) || null;
+
+  // Use values from createdOrder if available to keep prices correct after clearCart() resets cartTotal
+  const displayTotal = createdOrder ? Number(createdOrder.total) : totalPayment;
+  const displayDp = createdOrder ? Number(createdOrder.dp_amount) : dpAmount;
+  const displayRemaining = createdOrder ? Number(createdOrder.remaining_amount) : remainingAmount;
+  const displayPaymentType = createdOrder ? createdOrder.payment_type : paymentTypeChoice;
+  const displayAmountToPay = displayPaymentType === "dp" ? displayDp : displayTotal;
 
   // ── Submit order ───────────────────────────────────────────────────────────
   const handlePay = async () => {
@@ -405,30 +410,30 @@ export default function CheckoutPage() {
             <div className="bg-primary-fixed/30 border border-primary/20 rounded-xl p-5 space-y-3">
               <p className="text-sm font-bold text-primary uppercase tracking-wide text-center flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-[18px]">payments</span>
-                {paymentTypeChoice === "dp" ? "Ringkasan Pembayaran DP 50%" : "Ringkasan Pembayaran"}
+                {displayPaymentType === "dp" ? "Ringkasan Pembayaran DP 50%" : "Ringkasan Pembayaran"}
               </p>
-              {paymentTypeChoice === "dp" ? (
+              {displayPaymentType === "dp" ? (
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-white/60 rounded-lg p-3">
                     <p className="text-xs text-on-surface-variant mb-1">Total Pesanan</p>
-                    <p className="font-bold text-on-surface text-sm">{formatPrice(totalPayment)}</p>
+                    <p className="font-bold text-on-surface text-sm">{formatPrice(displayTotal)}</p>
                   </div>
                   <div className={`rounded-lg p-3 ${isQrisPaid ? 'bg-tertiary text-on-tertiary' : 'bg-primary text-on-primary'} transition-colors duration-300`}>
                     <p className="text-xs opacity-80 mb-1">{isQrisPaid ? 'Lunas (DP)' : 'Bayar Sekarang (DP)'}</p>
-                    <p className="font-bold text-sm">{formatPrice(dpAmount)}</p>
+                    <p className="font-bold text-sm">{formatPrice(displayDp)}</p>
                   </div>
                   <div className="bg-white/60 rounded-lg p-3">
                     <p className="text-xs text-on-surface-variant mb-1">Sisa Bayar</p>
-                    <p className="font-bold text-on-surface text-sm">{formatPrice(remainingAmount)}</p>
+                    <p className="font-bold text-on-surface text-sm">{formatPrice(displayRemaining)}</p>
                   </div>
                 </div>
               ) : (
                 <div className={`text-center rounded-lg p-4 ${isQrisPaid ? 'bg-tertiary text-on-tertiary' : 'bg-primary text-on-primary'} transition-colors duration-300`}>
                   <p className="text-xs opacity-80 mb-1">{isQrisPaid ? 'Lunas' : 'Bayar Penuh Sekarang'}</p>
-                  <p className="font-bold text-2xl">{formatPrice(totalPayment)}</p>
+                  <p className="font-bold text-2xl">{formatPrice(displayTotal)}</p>
                 </div>
               )}
-              {paymentTypeChoice === "dp" && (
+              {displayPaymentType === "dp" && (
                 <p className="text-xs text-on-surface-variant text-center">
                   Sisa pembayaran dilunasi setelah pesanan selesai disiapkan
                 </p>
@@ -455,12 +460,12 @@ export default function CheckoutPage() {
                 ) : (
                   <div className="flex flex-col items-center text-center space-y-4">
                     <p className="font-body-md text-on-surface-variant">
-                      Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                      {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
+                      Scan QRIS untuk membayar sebesar <strong className="text-primary">{formatPrice(displayAmountToPay)}</strong>
+                      {displayPaymentType === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}
                     </p>
                     <div className="w-48 h-48 bg-white p-3 rounded-lg border border-outline-variant flex items-center justify-center shadow-sm">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (createdOrder.payment?.id || "") + "_" + amountToPay)}`} 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent("qris_payment_mock_" + (createdOrder.payment?.id || "") + "_" + displayAmountToPay)}`} 
                         alt="QRIS Mock" 
                         className="w-full h-full object-contain" 
                       />
@@ -491,8 +496,8 @@ export default function CheckoutPage() {
               ) : (
                 <div className="space-y-4">
                   <p className="font-body-md text-on-surface-variant">
-                    Transfer ke {selectedPayment?.category === "bank_transfer" ? "rekening" : "nomor"} {selectedPayment?.name} sebesar <strong className="text-primary">{formatPrice(amountToPay)}</strong>
-                    {paymentTypeChoice === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
+                    Transfer ke {selectedPayment?.category === "bank_transfer" ? "rekening" : "nomor"} {selectedPayment?.name} sebesar <strong className="text-primary">{formatPrice(displayAmountToPay)}</strong>
+                    {displayPaymentType === "dp" && <span className="text-xs text-on-surface-variant ml-1">(DP 50%)</span>}:
                   </p>
                   
                   {selectedPayment?.category === "bank_transfer" ? (

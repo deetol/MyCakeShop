@@ -15,6 +15,42 @@ class ProductSeeder extends Seeder
      */
     public function run(): void
     {
+        $backupPath = __DIR__ . '/products_backup.json';
+
+        if (file_exists($backupPath)) {
+            $productsData = json_decode(file_get_contents($backupPath), true);
+            foreach ($productsData as $productData) {
+                $category = Category::where('slug', $productData['category_slug'])->first();
+                if (!$category) {
+                    $category = Category::first();
+                }
+
+                $sizes = $productData['sizes'] ?? [];
+                unset($productData['sizes']);
+                unset($productData['category_slug']);
+
+                $productData['category_id'] = $category->id;
+                
+                if (isset($productData['ingredients']) && is_string($productData['ingredients'])) {
+                    $productData['ingredients'] = json_decode($productData['ingredients'], true);
+                }
+                if (isset($productData['allergens']) && is_string($productData['allergens'])) {
+                    $productData['allergens'] = json_decode($productData['allergens'], true);
+                }
+
+                $product = Product::create($productData);
+
+                foreach ($sizes as $size) {
+                    ProductSize::create([
+                        'product_id' => $product->id,
+                        'size_name' => $size['size_name'],
+                        'price' => $size['price'],
+                    ]);
+                }
+            }
+            return;
+        }
+
         // Get categories
         $rotiManis = Category::where('slug', 'roti-manis')->first();
         $kueKering = Category::where('slug', 'kue-kering')->first();

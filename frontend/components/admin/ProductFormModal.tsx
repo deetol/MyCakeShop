@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { api, ApiError, ValidationError } from "@/lib/api";
+import { api, ApiError, ValidationError, resolveStorageUrl } from "@/lib/api";
 
 interface Category { id: number; name: string; }
 interface Product {
@@ -241,7 +241,7 @@ export default function ProductFormModal({ product, categories, token, onClose, 
               ) : mainImage ? (
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant relative flex-shrink-0">
-                    <Image src={mainImage} alt="Preview" fill className="object-cover" unoptimized />
+                    <Image src={resolveStorageUrl(mainImage)} alt="Preview" fill className="object-cover" unoptimized />
                   </div>
                   <div className="text-left flex-grow">
                     <p className="text-sm font-semibold text-on-surface">Foto terpilih</p>

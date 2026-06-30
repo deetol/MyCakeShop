@@ -186,7 +186,8 @@ export default function CartDrawer() {
                         <div className="flex items-center border border-outline rounded-lg overflow-hidden bg-surface-container">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                            disabled={!item.cartItemId}
+                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             -
                           </button>
@@ -195,8 +196,8 @@ export default function CartDrawer() {
                           </span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            disabled={item.stock !== undefined && item.quantity >= item.stock}
-                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled={!item.cartItemId || (item.stock !== undefined && item.quantity >= item.stock)}
+                            className="px-2.5 py-1 text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             title={item.stock !== undefined && item.quantity >= item.stock ? `Stok maksimal: ${item.stock}` : 'Tambah'}
                           >
                             +

@@ -169,6 +169,7 @@ export default function CartPage() {
                         fill
                         className="object-cover"
                         src={item.image}
+                        unoptimized
                       />
                     </div>
 
@@ -202,10 +203,11 @@ export default function CartPage() {
                         </div>
                         {/* Quantity Control */}
                         <div className="flex items-center border border-outline-variant rounded-lg bg-surface-container-lowest overflow-hidden h-10">
-                          <button
+                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            disabled={!item.cartItemId}
                             aria-label="Kurangi jumlah"
-                            className="w-10 h-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors"
+                            className="w-10 h-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             <span className="material-symbols-outlined text-[20px]">
                               remove
@@ -216,8 +218,9 @@ export default function CartPage() {
                           </span>
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            disabled={!item.cartItemId || (item.stock !== undefined && item.quantity >= item.stock)}
                             aria-label="Tambah jumlah"
-                            className="w-10 h-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors"
+                            className="w-10 h-full flex items-center justify-center text-primary hover:bg-surface-container transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                           >
                             <span className="material-symbols-outlined text-[20px]">
                               add
